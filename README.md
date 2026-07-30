@@ -3,7 +3,7 @@
 ## **Postulación: Desarrollador Fullstack Senior**
 
 Este examen práctico evalúa tus habilidades en **arquitectura de
-microservicios**, **.NET 8/9**, **mensajería con Servicio de Colas (RabbitMQ/Kafka/otro)**, **cliente
+microservicios**, **.NET 10**, **mensajería con Servicio de Colas (RabbitMQ/Kafka/otro)**, **cliente
 web React**, **procesamiento asíncrono**, **implementación de
 colas**, **trazabilidad**, **persistencia en PostgreSQL o SQL Server**,
 **notificaciones por correo** y buenas prácticas de desarrollo.
@@ -49,7 +49,7 @@ Permite:
 
 ------------------------------------------------------------------------
 
-### ✔️ **2. API Gateway (NET 8/9)**
+### ✔️ **2. API Gateway (NET 10)**
 
 Punto de entrada centralizado que:
 
@@ -59,7 +59,7 @@ Punto de entrada centralizado que:
 
 ---
 
-### ✔️ **3. Microservicio 0 — Authentication (NET 8/9)**
+### ✔️ **3. Microservicio 0 — Authentication (NET 10)**
 
 Funciones mínimas:
 
@@ -70,7 +70,7 @@ Funciones mínimas:
 
 ---
 
-### ✔️ **4. Microservicio 1 — Control / Publicador (NET 8/9)**
+### ✔️ **4. Microservicio 1 — Control / Publicador (NET 10)**
 
 Funciones:
 
@@ -82,7 +82,7 @@ Funciones:
 
 ---
 
-### ✔️ **5. Microservicio 2 — Carga Masiva (Consumidor / Publicador) (NET 8/9)**
+### ✔️ **5. Microservicio 2 — Carga Masiva (Consumidor / Publicador) (NET 10)**
 
 Responsabilidades:
 
@@ -99,7 +99,7 @@ Responsabilidades:
 
 ---
 
-### ✔️ **6. Microservicio 3 — Notificaciones (Consumidor) (NET 8/9)**
+### ✔️ **6. Microservicio 3 — Notificaciones (Consumidor) (NET 10)**
 
 - Escucha la cola de notificaciones.  
 - Envía un correo al usuario indicando que la carga finalizó.  

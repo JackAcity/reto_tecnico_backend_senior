@@ -12,6 +12,8 @@ x-servicio-net: &servicio-net
     Jwt__Key: ${JWT_KEY}
     Jwt__Issuer: ${JWT_ISSUER}
     Jwt__Audience: ${JWT_AUDIENCE}
+    Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS}
+    Jwt__RefreshExpiraDias: ${JWT_REFRESH_EXPIRA_DIAS}
   healthcheck:
     test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
     interval: 10s

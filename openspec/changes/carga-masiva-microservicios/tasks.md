@@ -24,10 +24,13 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 3 — Auth (h 4–6)
 
-- [ ] 3.1 `POST /auth/login` → JWT Bearer con claims (`sub`, `email`, `role`)
-- [ ] 3.2 Hash de contraseña con `PasswordHasher<T>` (sin ASP.NET Identity completo)
-- [ ] 3.3 `POST /auth/refresh` con rotación de refresh token persistido
-- [ ] 3.4 Claim/policy `carga:masiva` (el enunciado exige validar permiso de carga)
+- [x] 3.1 `POST /auth/login` → JWT Bearer con claims (`sub`, `email`, `role`, `jti`, `permiso`)
+- [x] 3.2 Hash de contraseña con `PasswordHasher<T>` (sin ASP.NET Identity completo)
+- [x] 3.3 `POST /auth/refresh` con rotación de refresh token persistido (revoca + encadena)
+- [x] 3.4 Claim `permiso=carga:masiva` emitido por rol; la **policy** que lo exige se
+      aplica en el gateway (tarea 4.2)
+- [x] 3.5 **Verificación: login 200 con claims, credencial mala 401, refresh 200 y
+      reuso del mismo refresh 401 — contra el contenedor** ✅ 05-ago 22:35
 
 ## Bloque 4 — Gateway (h 6–7)
 

@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Application\CargaMasiva.Application.csproj" />
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Infrastructure\CargaMasiva.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Shared\Persistencia\Persistencia.csproj" />
+    <ProjectReference Include="..\..\src\Services\Auth\Auth.Api\Auth.Api.csproj" />
   </ItemGroup>
 
 </Project>

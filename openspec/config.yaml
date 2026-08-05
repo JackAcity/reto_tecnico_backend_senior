@@ -1,0 +1,24 @@
+schema: spec-driven
+
+context: |
+  Reto técnico Acity — Backend Senior. Deadline: jueves 06-ago-2026 por la tarde.
+  Enunciado original: docs/RETO-ORIGINAL.md · Diagrama: docs/arquitectura-original.png
+
+  Stack cerrado (prescrito por el enunciado + diagrama, "ni más ni menos"):
+    .NET 10 · PostgreSQL · RabbitMQ · SeaweedFS · MailKit · Docker Compose · YARP
+    Arquitectura limpia + CQRS-lite (handlers propios, sin MediatR: v13+ es comercial)
+    RabbitMQ.Client puro (sin MassTransit: v9 es comercial; topología explícita se evalúa)
+    ExcelDataReader (MIT, streaming)
+
+  Regla rectora: el evaluador pidió "sigue las indicaciones, el stack y el alcance
+  técnico funcional. Ni más ni menos." Ante ambigüedad → lectura literal del enunciado,
+  y la decisión se documenta en el README.
+
+  Fuera de alcance explícito (no está en el enunciado ni en el diagrama):
+    CI/CD, Redis, service discovery, observabilidad (Prometheus/Jaeger),
+    database-per-service, transactional outbox, retención/limpieza de archivos.
+
+rules:
+  tasks:
+    - Cada tarea debe caber en 2 horas o menos
+    - El bloque de infraestructura (docker-compose verde) va primero, no último

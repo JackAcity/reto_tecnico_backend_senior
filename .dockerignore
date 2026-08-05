@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+.git/
+.github/
+.claude/
+openspec/
+docs/
+postman/
+tests/
+node_modules/
+*.md
+.env

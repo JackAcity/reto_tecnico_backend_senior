@@ -1,0 +1,138 @@
+name: reto-carga-masiva
+
+x-servicio-net: &servicio-net
+  restart: unless-stopped
+  environment: &env-net
+    ASPNETCORE_ENVIRONMENT: Development
+    ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    RabbitMq__Host: rabbitmq
+    RabbitMq__Usuario: ${RABBITMQ_USER}
+    RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    SeaweedFs__Filer: http://seaweedfs:8888
+    Jwt__Key: ${JWT_KEY}
+    Jwt__Issuer: ${JWT_ISSUER}
+    Jwt__Audience: ${JWT_AUDIENCE}
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+    interval: 10s
+    timeout: 3s
+    retries: 10
+    start_period: 20s
+
+services:
+  # ---------- Infraestructura ----------
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # consola de administración — se muestra en el video
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    command: server -dir=/data -master.volumeSizeLimitMB=64 -filer -s3
+    ports:
+      - "9333:9333"   # master
+      - "8888:8888"   # filer (HTTP API que usa Control)
+      - "8333:8333"   # gateway S3
+    volumes: ["seaweeddata:/data"]
+    healthcheck:
+      # 127.0.0.1 y no "localhost": el wget de BusyBox resuelve localhost a ::1
+      # y SeaweedFS solo escucha en IPv4 → "connection refused" permanente.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9333/cluster/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    # Servidor SMTP local: el correo enviado con MailKit se ve en la UI web,
+    # sin credenciales reales. Imprescindible para la demo en video.
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # UI web
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # ---------- Microservicios ----------
+  gateway:
+    <<: *servicio-net
+    build: { context: ., dockerfile: src/Gateway/Dockerfile }
+    ports: ["8080:8080"]
+    depends_on:
+      auth:          { condition: service_healthy }
+      control:       { condition: service_healthy }
+
+  auth:
+    <<: *servicio-net
+    environment:
+      <<: *env-net
+      Seed__Email: ${SEED_EMAIL}
+      Seed__Password: ${SEED_PASSWORD}
+      Seed__Rol: ${SEED_ROL}
+    build: { context: ., dockerfile: src/Services/Auth/Auth.Api/Dockerfile }
+    depends_on:
+      # Espera a Control, no a Postgres: Control es dueño del esquema y lo migra
+      # (design.md §C11). Sembrar antes de la migración fallaría.
+      control: { condition: service_healthy }
+
+  control:
+    <<: *servicio-net
+    build: { context: ., dockerfile: src/Services/Control/Control.Api/Dockerfile }
+    depends_on:
+      postgres:  { condition: service_healthy }
+      rabbitmq:  { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+
+  cargamasiva:
+    <<: *servicio-net
+    build: { context: ., dockerfile: src/Services/CargaMasiva/CargaMasiva.Api/Dockerfile }
+    depends_on:
+      # Control es dueño del esquema y aplica las migraciones (design.md §C11).
+      control:   { condition: service_healthy }
+      rabbitmq:  { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+
+  notificaciones:
+    <<: *servicio-net
+    environment:
+      <<: *env-net
+      Smtp__Host: ${SMTP_HOST}
+      Smtp__Puerto: ${SMTP_PORT}
+      Smtp__Usuario: ${SMTP_USER}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__Desde: ${SMTP_DESDE}
+      Smtp__UsarSsl: ${SMTP_USAR_SSL}
+    build: { context: ., dockerfile: src/Services/Notificaciones/Notificaciones.Api/Dockerfile }
+    depends_on:
+      control:  { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      mailpit:  { condition: service_healthy }
+
+volumes:
+  pgdata:
+  seaweeddata:

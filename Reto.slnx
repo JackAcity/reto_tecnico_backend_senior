@@ -1,0 +1,28 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.csproj" />
+    <Project Path="src/Gateway/Gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Auth/">
+    <Project Path="src/Services/Auth/Auth.Api/Auth.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/CargaMasiva/">
+    <Project Path="src/Services/CargaMasiva/CargaMasiva.Api/CargaMasiva.Api.csproj" />
+    <Project Path="src/Services/CargaMasiva/CargaMasiva.Application/CargaMasiva.Application.csproj" />
+    <Project Path="src/Services/CargaMasiva/CargaMasiva.Domain/CargaMasiva.Domain.csproj" />
+    <Project Path="src/Services/CargaMasiva/CargaMasiva.Infrastructure/CargaMasiva.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Control/">
+    <Project Path="src/Services/Control/Control.Api/Control.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Notificaciones/">
+    <Project Path="src/Services/Notificaciones/Notificaciones.Api/Notificaciones.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Persistencia/Persistencia.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CargaMasiva.Tests/CargaMasiva.Tests.csproj" />
+  </Folder>
+</Solution>

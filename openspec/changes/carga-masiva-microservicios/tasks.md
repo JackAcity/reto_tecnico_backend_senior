@@ -34,10 +34,14 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 4 — Gateway (h 6–7)
 
-- [ ] 4.1 YARP: rutas a los 4 servicios
-- [ ] 4.2 Validación de JWT en el gateway
-- [ ] 4.3 `AddRateLimiter` + `RateLimiterPolicy` por ruta, particionado por `sub` **(obligatorio)**
-- [ ] 4.4 Límites de body en los **tres** niveles: Kestrel, form options, YARP (C12)
+- [x] 4.1 YARP: rutas a los 4 servicios (`/auth/*`, `/cargas/*`, `/servicios/{cargamasiva,notificaciones}/*`)
+- [x] 4.2 Validación de JWT en el gateway + policy `cargaMasiva` que exige el claim `permiso`
+- [x] 4.3 `AddRateLimiter` + `RateLimiterPolicy` por ruta, particionado por `sub` **(obligatorio)**
+      — 60/min general, 10/min carga, 10/min login particionado por IP
+- [x] 4.4 Límites de body en los **tres** niveles: Kestrel, form options, YARP (C12), de un
+      único cálculo en código; falta ejercitar el 413 real cuando exista el endpoint de subida
+- [x] 4.5 **Verificación: 401 sin token, 401 con token falso, 200 atravesando con permiso,
+      429 por ráfaga — 6 tests contra el gateway en contenedor** ✅ 05-ago 22:55
 
 ## Bloque 5 — Control / Publicador (h 7–9)
 

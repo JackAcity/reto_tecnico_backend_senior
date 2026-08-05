@@ -14,6 +14,7 @@ x-servicio-net: &servicio-net
     Jwt__Audience: ${JWT_AUDIENCE}
     Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS}
     Jwt__RefreshExpiraDias: ${JWT_REFRESH_EXPIRA_DIAS}
+    Carga__TamanoMaximoMb: ${CARGA_TAMANO_MAXIMO_MB}
   healthcheck:
     test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
     interval: 10s

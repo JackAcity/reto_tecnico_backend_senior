@@ -17,12 +17,23 @@ app.UseServiceDefaults("Auth");
 await using (var alcance = app.Services.CreateAsyncScope())
 {
     var db = alcance.ServiceProvider.GetRequiredService<RetoDbContext>();
+
     var creado = await db.SembrarUsuarioAsync(
         builder.Configuration["Seed:Email"] ?? "admin@reto.local",
         builder.Configuration["Seed:Password"] ?? "Reto2026!",
         builder.Configuration["Seed:Rol"] ?? "administrador");
+    app.Logger.LogInformation("Usuario semilla (admin) {Estado}", creado ? "creado" : "ya existía");
 
-    app.Logger.LogInformation("Usuario semilla {Estado}", creado ? "creado" : "ya existía");
+    // Sin esto, el único usuario del sistema es un administrador — no hay forma
+    // de demostrar en vivo que la policy cargaMasiva realmente RECHAZA a un
+    // usuario autenticado sin el permiso (PermisosDe ya lo cubre en unit test,
+    // pero nunca se probó de punta a punta con una cuenta real). Rol "consulta":
+    // PermisosDe no le asigna carga:masiva.
+    var creadoConsulta = await db.SembrarUsuarioAsync(
+        builder.Configuration["Seed:ConsultaEmail"] ?? "consulta@reto.local",
+        builder.Configuration["Seed:ConsultaPassword"] ?? "Consulta2026!",
+        builder.Configuration["Seed:ConsultaRol"] ?? "consulta");
+    app.Logger.LogInformation("Usuario semilla (consulta) {Estado}", creadoConsulta ? "creado" : "ya existía");
 }
 
 // §2.3 — login. El 401 es idéntico para usuario inexistente y contraseña incorrecta:

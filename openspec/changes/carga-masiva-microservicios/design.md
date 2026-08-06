@@ -212,6 +212,26 @@ Tres controles de alto valor y bajo costo, aplicados; tres descartados con su ra
 | **Rate limiter con sliding window / token bucket** | El nativo (`FixedWindowRateLimiter`, Bloque 4) admite ráfaga doble en el borde de la ventana — límite conocido. Sliding window/token bucket exige código propio o un paquete de pago; el nativo ya cumple el requisito obligatorio (§4.3) sin esa brecha siendo explotable de forma práctica en este alcance. |
 | **Revocación de access token** | JWT stateless por diseño: un token robado sigue siendo válido hasta su expiración (60 min). Mitigarlo exige una lista de revocación consultada en cada request, lo que reintroduce el estado que el JWT stateless evita — trade-off estándar y documentado de cualquier sistema JWT sin sesión server-side; el refresh token sí rota y sí se revoca (Bloque 3). |
 
+### C15 — CQRS: ¿una tabla o dos?
+
+`ConsultaCargas`/`ServicioCargas` ya separan comando de consulta en código (CQRS-lite,
+§3). La pregunta que queda es de datos: ¿el lado de lectura necesita su propia tabla
+(proyección/read-model), como en un CQRS completo?
+
+**Resolución: una sola tabla.** Dos tablas se justifica cuando lectura y escritura
+escalan distinto, la forma de la lectura difiere mucho de la de escritura, o la
+consistencia eventual es aceptable. Ninguna aplica acá — y la tercera está
+directamente **prohibida** por el propio diseño: `sp_resolver_periodo` (§C2/§C9)
+exige que la lectura vea la escritura dentro de la misma transacción; con una
+proyección desincronizada, dos cargas del mismo periodo podrían pasar ambas.
+
+**Preparados para migrar si hiciera falta:** sí, a bajo costo, porque el corte ya
+está en el lugar correcto. `ConsultaCargas` es la única clase que sabe de dónde
+lee — cambiar su fuente a una proyección no toca el dominio, `ServicioCargas` ni
+los endpoints. Y el disparador para poblar esa proyección ya existe: cada cambio
+de estado ya publica en RabbitMQ; un proyector sería un consumidor más de la
+misma cola, no una reescritura.
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

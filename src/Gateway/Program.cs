@@ -97,6 +97,14 @@ internal static class Politicas
         ?? http.Connection.RemoteIpAddress?.ToString()
         ?? "anonimo";
 
+    // Kestrel.MaxRequestBodySize es un techo por PROCESO (limiteTransporte, ~26 MB,
+    // dimensionado para la subida) — sin este override, /auth/login hereda ese
+    // mismo techo aunque un login/refresh nunca pese más de un par de KB. YARP
+    // permite un límite MENOR por ruta, que es justo lo que hace falta acá: no
+    // gastar tiempo de Kestrel leyendo hasta 26 MB de un POST que iba a fallar la
+    // validación de todos modos.
+    private const long LimiteCuerpoAuth = 4 * 1024;
+
     public static IReadOnlyList<RouteConfig> Rutas(long limiteTransporte) =>
     [
         // Anónimas por necesidad: sin login no hay token.
@@ -105,14 +113,16 @@ internal static class Politicas
             RouteId = "auth-login",
             ClusterId = "auth",
             Match = new RouteMatch { Path = "/auth/login" },
-            RateLimiterPolicy = LimiteLogin
+            RateLimiterPolicy = LimiteLogin,
+            MaxRequestBodySize = LimiteCuerpoAuth
         },
         new RouteConfig
         {
             RouteId = "auth-refresh",
             ClusterId = "auth",
             Match = new RouteMatch { Path = "/auth/refresh" },
-            RateLimiterPolicy = LimiteLogin
+            RateLimiterPolicy = LimiteLogin,
+            MaxRequestBodySize = LimiteCuerpoAuth
         },
         // La subida: exige el permiso de carga y trae su propio techo de tamaño.
         new RouteConfig

@@ -106,6 +106,9 @@ services:
       Seed__Email: ${SEED_EMAIL}
       Seed__Password: ${SEED_PASSWORD}
       Seed__Rol: ${SEED_ROL}
+      Seed__ConsultaEmail: ${SEED_CONSULTA_EMAIL}
+      Seed__ConsultaPassword: ${SEED_CONSULTA_PASSWORD}
+      Seed__ConsultaRol: ${SEED_CONSULTA_ROL}
     build: { context: ., dockerfile: src/Services/Auth/Auth.Api/Dockerfile }
     depends_on:
       # Espera a Control, no a Postgres: Control es dueño del esquema y lo migra

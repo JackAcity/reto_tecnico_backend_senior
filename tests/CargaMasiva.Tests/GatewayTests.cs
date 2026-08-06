@@ -113,4 +113,43 @@ public sealed class GatewayTests(GatewayFixture fixture) : IClassFixture<Gateway
 
         Assert.Equal(HttpStatusCode.TooManyRequests, ultimo);
     }
+
+    /// <summary>
+    /// §3.2a de punta a punta, no solo PermisosDe en aislado: un usuario real,
+    /// autenticado, sin el claim carga:masiva, debe ser rechazado por la policy
+    /// del gateway con 403 — ni 401 (sí está autenticado) ni 200 (no tiene el
+    /// permiso). El rol "consulta" lo siembra Auth al arrancar (Seed:ConsultaRol).
+    /// </summary>
+    [Fact]
+    public async Task Cargas_ConUsuarioSinPermiso_Da403()
+    {
+        var login = await fixture.Cliente.PostAsJsonAsync("/auth/login", new
+        {
+            email = Environment.GetEnvironmentVariable("SEED_CONSULTA_EMAIL") ?? "consulta@reto.local",
+            password = Environment.GetEnvironmentVariable("SEED_CONSULTA_PASSWORD") ?? "Consulta2026!"
+        });
+        login.EnsureSuccessStatusCode();
+        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        var tokenSinPermiso = json.RootElement.GetProperty("accessToken").GetString();
+
+        var peticion = new HttpRequestMessage(HttpMethod.Get, "/cargas");
+        peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenSinPermiso);
+
+        var respuesta = await fixture.Cliente.SendAsync(peticion);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    /// <summary>§C12 — /auth/login tiene su propio techo, mucho menor que el de /cargas.</summary>
+    [Fact]
+    public async Task Login_ConCuerpoDemasiadoGrande_NoDa401()
+    {
+        var cuerpoEnorme = new { email = "x@x.com", password = new string('a', 10_000) };
+
+        var respuesta = await fixture.Cliente.PostAsJsonAsync("/auth/login", cuerpoEnorme);
+
+        // No debe comportarse como una credencial simplemente inválida (401):
+        // el límite de tamaño de YARP corta antes de que la petición llegue a Auth.
+        Assert.NotEqual(HttpStatusCode.Unauthorized, respuesta.StatusCode);
+    }
 }

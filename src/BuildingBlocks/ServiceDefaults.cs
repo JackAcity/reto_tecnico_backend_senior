@@ -72,19 +72,29 @@ public static class ServiceDefaults
     }
 }
 
-/// <summary>Requisito §4.6 — manejo de excepciones global, sin try/catch por endpoint.</summary>
-internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+/// <summary>
+/// Requisito §4.6 — manejo de excepciones global, sin try/catch por endpoint.
+/// Pública (no internal) para poder probarla directamente, sin levantar un host HTTP.
+/// </summary>
+public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception ex, CancellationToken ct)
     {
         logger.LogError(ex, "Excepción no controlada en {Ruta}", http.Request.Path);
 
-        var (status, titulo) = ex switch
+        // ex.Message solo se expone para las excepciones esperadas (mensajes que el
+        // propio código escribió pensando en que el cliente los lea, ej.
+        // TransicionInvalidaException). Para todo lo demás (500: fallo de Npgsql,
+        // de RabbitMQ, o cualquier excepción no prevista) el mensaje puede traer
+        // detalles internos — connection strings, nombres de columna, stack de
+        // terceros. Ahí solo se expone el correlationId; el detalle real queda en
+        // el log del servidor, ya escrito arriba.
+        var (status, titulo, exponerDetalle) = ex switch
         {
-            ArgumentException or InvalidOperationException => (StatusCodes.Status400BadRequest, "Solicitud inválida"),
-            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Acceso denegado"),
-            KeyNotFoundException => (StatusCodes.Status404NotFound, "Recurso no encontrado"),
-            _ => (StatusCodes.Status500InternalServerError, "Error interno")
+            ArgumentException or InvalidOperationException => (StatusCodes.Status400BadRequest, "Solicitud inválida", true),
+            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Acceso denegado", true),
+            KeyNotFoundException => (StatusCodes.Status404NotFound, "Recurso no encontrado", true),
+            _ => (StatusCodes.Status500InternalServerError, "Error interno", false)
         };
 
         http.Response.StatusCode = status;
@@ -92,7 +102,7 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
         {
             title = titulo,
             status,
-            detail = ex.Message,
+            detail = exponerDetalle ? ex.Message : "Ocurrió un error inesperado. Usa el correlationId para ubicar el detalle en los logs del servidor.",
             correlationId = http.Response.Headers[ServiceDefaults.CorrelationHeader].FirstOrDefault()
         }, ct);
 

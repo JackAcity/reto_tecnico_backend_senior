@@ -32,6 +32,15 @@ public sealed class ServicioAutenticacion(RetoDbContext db, IOptions<OpcionesJwt
     public const string PermisoCargaMasiva = "carga:masiva";
 
     private static readonly PasswordHasher<Usuario> Hasher = new();
+
+    // Usuario y hash de relleno para cuando el email no existe. Sin esto, "usuario
+    // inexistente" retorna antes de correr PBKDF2 y "password incorrecta" sí lo
+    // corre — el tiempo de respuesta delata qué emails existen aunque el 401 sea
+    // idéntico en body y status. Se verifica siempre contra ALGÚN hash.
+    private static readonly Usuario UsuarioFicticio = new() { Id = -1, Email = "", Rol = "" };
+    private static readonly string HashFicticio =
+        new PasswordHasher<Usuario>().HashPassword(UsuarioFicticio, Guid.NewGuid().ToString());
+
     private readonly OpcionesJwt _jwt = opciones.Value;
 
     /// <summary>Qué habilita cada rol. Un solo lugar donde mirar cuando el evaluador pregunte.</summary>
@@ -45,11 +54,11 @@ public sealed class ServicioAutenticacion(RetoDbContext db, IOptions<OpcionesJwt
     public async Task<ResultadoAutenticacion?> LoginAsync(string email, string password, CancellationToken ct = default)
     {
         var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Email == email && u.Activo, ct);
-        if (usuario is null)
-            return null;
 
-        var verificacion = Hasher.VerifyHashedPassword(usuario, usuario.PasswordHash, password);
-        if (verificacion == PasswordVerificationResult.Failed)
+        var verificacion = Hasher.VerifyHashedPassword(
+            usuario ?? UsuarioFicticio, usuario?.PasswordHash ?? HashFicticio, password);
+
+        if (usuario is null || verificacion == PasswordVerificationResult.Failed)
             return null;
 
         // El hash quedó con parámetros viejos: se actualiza aprovechando que la

@@ -153,6 +153,27 @@ Kestrel (30 MB por defecto), los límites de formulario y YARP son **tres** tech
 distintos. Sin configurar los tres, aparece un `413` crudo en el gateway que parece
 un bug. La validación de negocio debe responder un error claro **antes** de ese techo.
 
+### C13 — Gestión de secretos
+No es una contradicción del enunciado (no lo menciona), pero es una pregunta legítima
+de seguridad-por-diseño: ¿por qué `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `JWT_KEY`
+viajan como variables de entorno (`.env` → `environment:` en el compose) y no en un
+gestor de secretos?
+
+Se evaluaron tres escalones:
+
+| Opción | Qué gana | Costo |
+|---|---|---|
+| **Variables de entorno** (elegida) | Cero infraestructura extra | Visible en `docker inspect` y en procesos hijos |
+| **Docker secrets** (archivo montado en `/run/secrets/`, `AddKeyPerFile()` en .NET) | No aparece en `docker inspect`; sin Swarm, sigue siendo un archivo plano en disco | Bloques `secrets:` por servicio + cambiar el proveedor de configuración en cada uno |
+| **Vault** (secretos dinámicos, rotación, políticas, auditoría) | La respuesta correcta en producción | Contenedor propio, unseal, políticas — para un `docker compose up` que un evaluador corre una vez |
+
+**Resolución: variables de entorno**, con `.env` en `.gitignore` y `.env.example` sin
+valores reales. El salto de "env var" a "Docker secrets" es marginal en este contexto —
+el secreto sigue siendo un archivo en texto plano en la máquina de quien evalúa, sea cual
+sea el mecanismo — y el salto a Vault es infraestructura desproporcionada para una entrega
+que se levanta una sola vez, en una sola máquina, sin superficie de red expuesta más allá
+de `localhost`. Trade-off consciente, no descuido.
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

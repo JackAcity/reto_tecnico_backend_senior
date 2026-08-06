@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -17,6 +18,21 @@ namespace BuildingBlocks;
 public static class ServiceDefaults
 {
     public const string CorrelationHeader = "X-Correlation-Id";
+
+    // El CorrelationId de un request entrante lo escribe el CLIENTE (o el gateway
+    // reenviando el del cliente). Sin validar, ese string cae directo en el log de
+    // consola vía Serilog — un valor con saltos de línea permite inyectar líneas de
+    // log falsas ("log injection"); uno larguísimo infla el almacenamiento de logs.
+    // Se acepta solo lo que un GUID/hex/timestamp legítimo produciría; cualquier
+    // otra cosa se descarta y se genera uno nuevo, en vez de confiar a ciegas en
+    // input del cliente.
+    private static readonly Regex CorrelationIdValido = new("^[a-zA-Z0-9-]{1,64}$", RegexOptions.Compiled);
+
+    /// <summary>Pública para poder probarla directo, sin levantar un host HTTP.</summary>
+    public static string CorrelationIdSeguro(string? entrante) =>
+        entrante is not null && CorrelationIdValido.IsMatch(entrante)
+            ? entrante
+            : Guid.NewGuid().ToString("N");
 
     public static WebApplicationBuilder AddServiceDefaults(this WebApplicationBuilder builder, string serviceName)
     {
@@ -55,8 +71,7 @@ public static class ServiceDefaults
         // que el enunciado define de forma literal (ver design.md §M2).
         app.Use(async (ctx, next) =>
         {
-            var correlationId = ctx.Request.Headers[CorrelationHeader].FirstOrDefault()
-                                ?? Guid.NewGuid().ToString("N");
+            var correlationId = CorrelationIdSeguro(ctx.Request.Headers[CorrelationHeader].FirstOrDefault());
             ctx.Response.Headers[CorrelationHeader] = correlationId;
             using (LogContext.PushProperty("CorrelationId", correlationId))
             {

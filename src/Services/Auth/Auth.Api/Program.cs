@@ -18,9 +18,15 @@ await using (var alcance = app.Services.CreateAsyncScope())
 {
     var db = alcance.ServiceProvider.GetRequiredService<RetoDbContext>();
 
+    // Email y rol no son secretos — un valor por defecto en código es solo
+    // conveniencia. La contraseña sí lo es: un fallback acá la duplicaría en
+    // código versionado en git, exactamente lo que §C13 descarta al justificar
+    // .env. Mismo espíritu que Jwt:Key (BuildingBlocks/Autenticacion.cs), pero
+    // con chequeo explícito de vacío: "" no es null, así que Seed:Password=""
+    // (variable declarada pero sin valor) pasaría de largo un simple "?? throw".
     var creado = await db.SembrarUsuarioAsync(
         builder.Configuration["Seed:Email"] ?? "admin@reto.local",
-        builder.Configuration["Seed:Password"] ?? "Reto2026!",
+        PasswordRequerida(builder.Configuration["Seed:Password"], "Seed:Password"),
         builder.Configuration["Seed:Rol"] ?? "administrador");
     app.Logger.LogInformation("Usuario semilla (admin) {Estado}", creado ? "creado" : "ya existía");
 
@@ -31,7 +37,7 @@ await using (var alcance = app.Services.CreateAsyncScope())
     // PermisosDe no le asigna carga:masiva.
     var creadoConsulta = await db.SembrarUsuarioAsync(
         builder.Configuration["Seed:ConsultaEmail"] ?? "consulta@reto.local",
-        builder.Configuration["Seed:ConsultaPassword"] ?? "Consulta2026!",
+        PasswordRequerida(builder.Configuration["Seed:ConsultaPassword"], "Seed:ConsultaPassword"),
         builder.Configuration["Seed:ConsultaRol"] ?? "consulta");
     app.Logger.LogInformation("Usuario semilla (consulta) {Estado}", creadoConsulta ? "creado" : "ya existía");
 }
@@ -70,6 +76,10 @@ app.MapPost("/auth/refresh", async (SolicitudRefresh req, ServicioAutenticacion 
 });
 
 app.Run();
+
+/// <summary>IsNullOrWhiteSpace y no solo null: una variable de entorno declarada vacía no es "ausente".</summary>
+static string PasswordRequerida(string? valor, string clave) =>
+    string.IsNullOrWhiteSpace(valor) ? throw new InvalidOperationException($"Falta {clave}.") : valor;
 
 public sealed record SolicitudLogin(string? Email, string? Password);
 public sealed record SolicitudRefresh(string? RefreshToken);

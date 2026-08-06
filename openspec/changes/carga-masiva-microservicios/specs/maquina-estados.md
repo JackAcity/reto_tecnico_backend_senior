@@ -45,6 +45,15 @@ Todo otro par ES inválido y DEBE lanzar excepción de dominio.
 - **Y** las filas de `2025-02` se registran en `DetalleCargaError` con motivo `PeriodoYaCargado`
 - **Y** la carga termina en `Finalizado` (no en `Rechazada`: hubo trabajo útil)
 
+### Escenario: periodos ya cargados y bloqueados a la vez (desempate)
+- **DADO** un archivo con dos periodos, uno `YaCargado` y otro `Bloqueado`, ninguno `Libre`
+- **CUANDO** CargaMasiva decide el estado terminal
+- **ENTONCES** el resultado es `Bloqueada`, no `Rechazada`
+- **PORQUE** es la lectura más accionable: "hay una carga en curso, reintentar
+  luego" es más útil que "ya está cargado, no hay nada que hacer" — y porque el
+  enunciado no define qué hacer ante la mezcla, así que se resuelve a favor de
+  la interpretación que le da al usuario algo que hacer
+
 ### Escenario: todos los periodos ya estaban cargados
 - **DADO** un archivo cuyos tres periodos tienen carga previa `Finalizado`
 - **CUANDO** CargaMasiva lo procesa

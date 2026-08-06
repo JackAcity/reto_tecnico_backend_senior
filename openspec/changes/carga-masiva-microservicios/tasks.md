@@ -56,20 +56,25 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 6 — CargaMasiva ⭐ EL NÚCLEO (h 9–14)
 
-- [ ] 6.1 Consumidor con prefetch, ack manual, DLX + cola de reintento
-- [ ] 6.2 Estado → `EnProceso`; descarga desde SeaweedFS
-- [ ] 6.3 Lectura streaming del Excel (`ExcelDataReader`), normalización y defaults
-- [ ] 6.4 Filas vacías descartadas; columnas vacías → valor por defecto
-- [ ] 6.5 Validación de periodo **excluyendo el propio `IdCarga`** (C2), parcial por periodo (C3)
-- [ ] 6.6 Deduplicación **intra-lote** + contra base (C4), primera ocurrencia gana
-- [ ] 6.7 Inserción masiva vía SP; estados `Cargado` → `Finalizado`
-- [ ] 6.8 Fallidos a `DetalleCargaError` con fila, columna, regla y valor crudo
-- [ ] 6.9 Publica en cola `notificaciones`
-- [ ] 6.10 **TEST DETERMINISTA: el archivo de muestra produce exactamente 154 insertados / 46 `Existente`**
-      (clave `(Periodo, CodigoProducto)`. Medido sobre el `.xlsx` real el 05-ago: 200 filas,
-      116 códigos distintos, 154 pares distintos, 35 códigos repetidos dentro del mismo periodo,
-      36 cruzando periodos. El escenario de clave global — 116/84 — se documenta en el README
-      como alternativa descartada, no se implementa.)
+- [x] 6.1 Consumidor con prefetch(1), ack manual, DLX + cola de reintento — tope de 3
+      intentos leyendo `x-death`, después va a `carga_masiva.muertos` y la carga a `Fallida`
+- [x] 6.2 Estado → `EnProceso`; descarga desde SeaweedFS
+- [x] 6.3 Lectura streaming del Excel (`ExcelDataReader`), normalización y defaults
+      (bug real encontrado y corregido: el stream de red no es seekable y ExcelDataReader
+      lo necesita — `AlmacenSeaweedFs.DescargarAsync` ahora bufferiza antes de devolver)
+- [x] 6.4 Filas vacías descartadas; columnas vacías → valor por defecto
+- [x] 6.5 Validación de periodo **excluyendo el propio `IdCarga`** (C2), parcial por periodo (C3)
+- [x] 6.6 Deduplicación **intra-lote** + contra base (C4), primera ocurrencia gana
+- [x] 6.7 Inserción masiva vía SP; estados `Cargado` → `Finalizado` (o `Rechazada`/`Bloqueada`
+      si ningún periodo quedó libre — desempate documentado en maquina-estados.md)
+- [x] 6.8 Fallidos a `DetalleCargaError` con fila, columna, regla y valor crudo
+- [x] 6.9 Publica en cola `notificaciones`, con el mismo `correlationId` de origen
+- [x] 6.10 **TEST DETERMINISTA: el archivo de muestra produce exactamente 154 insertados / 46 `Existente`**
+      — verificado dos veces contra el consumidor REAL (no solo lógica pura) en una base
+      recién levantada (`docker compose down -v && up`): `data_procesada` con 154 filas,
+      `detalle_carga_error` con 46 `Existente`, `carga_archivo.estado = Finalizado`.
+      (clave `(Periodo, CodigoProducto)`. El escenario de clave global — 116/84 — queda
+      documentado como alternativa descartada, no se implementa.) ✅ 06-ago 22:45
 
 ## Bloque 7 — Notificaciones (h 14–15)
 

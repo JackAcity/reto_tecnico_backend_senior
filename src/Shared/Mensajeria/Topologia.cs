@@ -4,12 +4,25 @@ namespace Mensajeria;
 
 public sealed class OpcionesRabbit
 {
-    public string Host { get; set; } = "rabbitmq";
+    public string Host { get; set; } = "";
     public int Puerto { get; set; } = 5672;
-    public string Usuario { get; set; } = "guest";
-    public string Password { get; set; } = "guest";
+    public string Usuario { get; set; } = "";
+    public string Password { get; set; } = "";
     /// <summary>Espera antes de reintentar un lote que falló, en segundos.</summary>
     public int ReintentoSegundos { get; set; } = 30;
+
+    /// <summary>
+    /// Sin valores por defecto para host/usuario/password: "rabbitmq"/"guest"/"guest"
+    /// siempre funcionaban en docker-compose (.env los inyecta), y por eso mismo
+    /// escondían el error si algún día un servicio corre suelto sin configurar nada
+    /// — guest/guest en particular es la credencial insegura de fábrica de RabbitMQ.
+    /// </summary>
+    public void Validar()
+    {
+        if (string.IsNullOrWhiteSpace(Host)) throw new InvalidOperationException("Falta RabbitMq:Host.");
+        if (string.IsNullOrWhiteSpace(Usuario)) throw new InvalidOperationException("Falta RabbitMq:Usuario.");
+        if (string.IsNullOrWhiteSpace(Password)) throw new InvalidOperationException("Falta RabbitMq:Password.");
+    }
 }
 
 /// <summary>

@@ -95,7 +95,8 @@ public class ValidacionFirmaTests
 /// §2️⃣ de punta a punta por el gateway: sube, registra en Pendiente y encola.
 /// Requiere el stack levantado — <c>docker compose up -d</c>.
 /// </summary>
-public sealed class CargasTests(GatewayFixture fixture) : IClassFixture<GatewayFixture>
+[Collection("Gateway")]
+public sealed class CargasTests(GatewayFixture fixture)
 {
     private static readonly string RutaMuestra =
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "samples", "carga_masiva_productos.xlsx"));
@@ -183,5 +184,74 @@ public sealed class CargasTests(GatewayFixture fixture) : IClassFixture<GatewayF
         var respuesta = await fixture.Cliente.SendAsync(Get("/cargas/999999"));
 
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
+    }
+
+    /// <summary>
+    /// Bloque 6 de punta a punta: sube el archivo real y deja correr el
+    /// consumidor real — descarga de SeaweedFS, sp_resolver_periodo, dedup,
+    /// sp_insertar_data_procesada, transición de estado, publicación a
+    /// notificaciones. Nada de esto se mockea.
+    ///
+    /// La primera vez que corre contra una base recién levantada (el escenario
+    /// real de un evaluador con "docker compose up"), los tres periodos del
+    /// archivo están libres y el resultado es el determinista de design.md §C5:
+    /// 154 insertados / 46 Existente, Finalizado. Si se repite sin resetear la
+    /// base, esos periodos ya quedaron tomados por la corrida anterior y el
+    /// resultado correcto es Rechazada con las 200 filas auditadas — es la
+    /// MISMA regla de negocio (§3.3) actuando, no un fallo del test. Por eso se
+    /// afirma primero el invariante que se sostiene siempre, y después el
+    /// resultado exacto de cada una de las dos ramas legítimas.
+    /// </summary>
+    [Fact]
+    public async Task ArchivoDeMuestra_ProcesadoPorElConsumidorReal_TerminaEnFinalizadoORechazada()
+    {
+        var subida = await fixture.Cliente.SendAsync(Subida(RutaMuestra, "carga_masiva_productos.xlsx"));
+        subida.EnsureSuccessStatusCode();
+        using var creada = JsonDocument.Parse(await subida.Content.ReadAsStringAsync());
+        var idCarga = creada.RootElement.GetProperty("idCarga").GetInt32();
+
+        JsonElement detalle = default;
+        string estado;
+        var limite = DateTime.UtcNow.AddSeconds(20);
+        do
+        {
+            // 1.5s y no algo más agresivo: LimitePorUsuario es 60/min compartido
+            // por TODO lo que esta clase hace con el mismo token — un sondeo cada
+            // 500ms (hasta 60 requests solo) lo agotaba junto con el resto de la
+            // suite. Es además el comportamiento correcto de un cliente real: nadie
+            // debería sondear un estado cada 500ms.
+            await Task.Delay(1500);
+            var respuesta = await fixture.Cliente.SendAsync(Get($"/cargas/{idCarga}"));
+            respuesta.EnsureSuccessStatusCode();
+            using var json = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync());
+            detalle = json.RootElement.Clone();
+            estado = detalle.GetProperty("carga").GetProperty("estado").GetString()!;
+        }
+        while (estado is "Pendiente" or "EnProceso" && DateTime.UtcNow < limite);
+
+        var carga = detalle.GetProperty("carga");
+        var insertadas = carga.GetProperty("filasInsertadas").GetInt32();
+        var rechazadas = carga.GetProperty("filasRechazadas").GetInt32();
+
+        Assert.Contains(estado, (string[])["Finalizado", "Rechazada"]);
+        Assert.Equal(200, insertadas + rechazadas);
+
+        if (estado == "Finalizado")
+        {
+            Assert.Equal(154, insertadas);
+            Assert.Equal(46, rechazadas);
+
+            // Cada carga_periodo queda con su propio conteo, no en 0 (ManejadorCarga
+            // lo completa después del INSERT masivo: el SP no lo sabe todavía).
+            var periodos = detalle.GetProperty("periodos").EnumerateArray().ToList();
+            Assert.Equal(3, periodos.Count);
+            Assert.Equal(154, periodos.Sum(p => p.GetProperty("filasInsertadas").GetInt32()));
+            Assert.All(periodos, p => Assert.Equal("Aceptado", p.GetProperty("estado").GetString()));
+        }
+        else
+        {
+            Assert.Equal(0, insertadas);
+            Assert.Equal(200, rechazadas);
+        }
     }
 }

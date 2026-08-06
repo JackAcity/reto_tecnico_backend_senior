@@ -19,15 +19,37 @@ public sealed class GatewayFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        var respuesta = await Cliente.PostAsJsonAsync("/auth/login", new
-        {
-            email = Environment.GetEnvironmentVariable("SEED_EMAIL") ?? "admin@reto.local",
-            password = Environment.GetEnvironmentVariable("SEED_PASSWORD") ?? "Reto2026!"
-        });
+        var respuesta = await LoginConReintentoAsync(Cliente,
+            Environment.GetEnvironmentVariable("SEED_EMAIL") ?? "admin@reto.local",
+            Environment.GetEnvironmentVariable("SEED_PASSWORD") ?? "Reto2026!");
 
-        respuesta.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync());
         AccessToken = json.RootElement.GetProperty("accessToken").GetString()!;
+    }
+
+    /// <summary>
+    /// El bucket de /auth/login es compartido por IP con /auth/refresh (Bloque 4),
+    /// y Rafaga_SobreRutaAnonima_Termina429 lo agota A PROPÓSITO como parte de su
+    /// propia prueba — efecto secundario que puede durar hasta 60s (ventana fija) y
+    /// golpear a un login de otra corrida de test iniciada poco después. El rate
+    /// limiter está haciendo bien su trabajo; el cliente de test es el que tiene
+    /// que ser resiliente a su propio vecino ruidoso, con reintento acotado.
+    /// </summary>
+    public static async Task<HttpResponseMessage> LoginConReintentoAsync(HttpClient cliente, string email, string password)
+    {
+        var limite = DateTime.UtcNow.AddSeconds(75);
+        while (true)
+        {
+            var respuesta = await cliente.PostAsJsonAsync("/auth/login", new { email, password });
+
+            if (respuesta.StatusCode != HttpStatusCode.TooManyRequests || DateTime.UtcNow >= limite)
+            {
+                respuesta.EnsureSuccessStatusCode();
+                return respuesta;
+            }
+
+            await Task.Delay(5000);
+        }
     }
 
     public Task DisposeAsync()
@@ -38,10 +60,22 @@ public sealed class GatewayFixture : IAsyncLifetime
 }
 
 /// <summary>
+/// GatewayTests y CargasTests comparten esta colección a propósito: ambas usan
+/// GatewayFixture (un login real), y GatewayTests además incluye
+/// Rafaga_SobreRutaAnonima_Termina429, que agota a propósito el mismo bucket de
+/// rate limit (por IP, compartido entre /auth/login y /auth/refresh — Bloque 4).
+/// Sin esta colección, xUnit corre las clases en paralelo por defecto y esa
+/// ráfaga puede tirar 429 al login de la otra clase a mitad de su fixture.
+/// </summary>
+[CollectionDefinition("Gateway")]
+public sealed class ColeccionGateway : ICollectionFixture<GatewayFixture>;
+
+/// <summary>
 /// El borde: autenticación, autorización por permiso y rate limiting (§4.3, §3.2a).
 /// Requiere el stack levantado — <c>docker compose up -d</c>.
 /// </summary>
-public sealed class GatewayTests(GatewayFixture fixture) : IClassFixture<GatewayFixture>
+[Collection("Gateway")]
+public sealed class GatewayTests(GatewayFixture fixture)
 {
     private HttpRequestMessage ConToken(HttpMethod metodo, string ruta)
     {
@@ -123,12 +157,9 @@ public sealed class GatewayTests(GatewayFixture fixture) : IClassFixture<Gateway
     [Fact]
     public async Task Cargas_ConUsuarioSinPermiso_Da403()
     {
-        var login = await fixture.Cliente.PostAsJsonAsync("/auth/login", new
-        {
-            email = Environment.GetEnvironmentVariable("SEED_CONSULTA_EMAIL") ?? "consulta@reto.local",
-            password = Environment.GetEnvironmentVariable("SEED_CONSULTA_PASSWORD") ?? "Consulta2026!"
-        });
-        login.EnsureSuccessStatusCode();
+        var login = await GatewayFixture.LoginConReintentoAsync(fixture.Cliente,
+            Environment.GetEnvironmentVariable("SEED_CONSULTA_EMAIL") ?? "consulta@reto.local",
+            Environment.GetEnvironmentVariable("SEED_CONSULTA_PASSWORD") ?? "Consulta2026!");
         using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
         var tokenSinPermiso = json.RootElement.GetProperty("accessToken").GetString();
 

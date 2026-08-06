@@ -53,7 +53,11 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
             ContentType = "application/json",
             DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
             CorrelationId = correlationId,
-            MessageId = Guid.NewGuid().ToString("N")
+            MessageId = Guid.NewGuid().ToString("N"),
+            // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
+            // no hace falta reinventarlo dentro del JSON, que además el enunciado
+            // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
+            Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
         };
 
         await canal.BasicPublishAsync(
@@ -72,6 +76,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
             if (_canal is { IsOpen: true })
                 return _canal;
 
+            _opciones.Validar();
             _conexion ??= await new ConnectionFactory
             {
                 HostName = _opciones.Host,

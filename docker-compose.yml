@@ -91,6 +91,16 @@ services:
   # ---------- Microservicios ----------
   gateway:
     <<: *servicio-net
+    environment:
+      <<: *env-net
+      # No es "el mismo tipo de config que un password", pero el principio es el
+      # mismo: si esto faltara, un fallback silencioso apuntaría a un nombre de
+      # host que puede no existir fuera de esta red de contenedores. Explícito acá,
+      # y Program.cs falla al arrancar si falta — igual que el resto.
+      Servicios__Auth: http://auth:8080/
+      Servicios__Control: http://control:8080/
+      Servicios__CargaMasiva: http://cargamasiva:8080/
+      Servicios__Notificaciones: http://notificaciones:8080/
     build: { context: ., dockerfile: src/Gateway/Dockerfile }
     # Única puerta pública del sistema (design.md): también acotada a loopback,
     # nada obliga a que sea alcanzable desde la LAN del evaluador.

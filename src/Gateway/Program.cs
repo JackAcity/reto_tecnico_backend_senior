@@ -157,11 +157,14 @@ internal static class Politicas
 
     public static IReadOnlyList<ClusterConfig> Clusters(IConfiguration config) =>
     [
-        Cluster("auth", config["Servicios:Auth"] ?? "http://auth:8080/"),
-        Cluster("control", config["Servicios:Control"] ?? "http://control:8080/"),
-        Cluster("cargamasiva", config["Servicios:CargaMasiva"] ?? "http://cargamasiva:8080/"),
-        Cluster("notificaciones", config["Servicios:Notificaciones"] ?? "http://notificaciones:8080/")
+        Cluster("auth", Requerido(config, "Servicios:Auth")),
+        Cluster("control", Requerido(config, "Servicios:Control")),
+        Cluster("cargamasiva", Requerido(config, "Servicios:CargaMasiva")),
+        Cluster("notificaciones", Requerido(config, "Servicios:Notificaciones"))
     ];
+
+    private static string Requerido(IConfiguration config, string clave) =>
+        config[clave] ?? throw new InvalidOperationException($"Falta {clave}.");
 
     private static ClusterConfig Cluster(string id, string direccion) => new()
     {

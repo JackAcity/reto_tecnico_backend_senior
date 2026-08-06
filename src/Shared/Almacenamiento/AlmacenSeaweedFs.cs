@@ -29,7 +29,13 @@ public sealed class AlmacenSeaweedFs(HttpClient http) : IAlmacenArchivos
     {
         // Un prefijo único por subida evita que dos archivos con el mismo nombre
         // se pisen, sin tener que consultar antes si la ruta ya existe.
-        var rutaRelativa = $"{Carpeta}/{Guid.NewGuid():N}/{Path.GetFileName(nombreArchivo)}";
+        // Path.GetFileName (semántica Linux del contenedor: solo "/" separa) ya
+        // descarta cualquier componente de directorio — nada de "../" sobrevive.
+        // Uri.EscapeDataString es la segunda mitad: sin ella, un nombre con tilde,
+        // espacio o "#" (frecuente en español: "Catálogo Q1.xlsx") rompe la URI
+        // que se arma para el filer, o peor, la trunca en un punto inesperado.
+        var nombreSeguro = Uri.EscapeDataString(Path.GetFileName(nombreArchivo));
+        var rutaRelativa = $"{Carpeta}/{Guid.NewGuid():N}/{nombreSeguro}";
 
         // El cuerpo va como bytes y no como StreamContent: si el handler de
         // resiliencia reintenta, un stream ya consumido enviaría un archivo vacío.

@@ -1,23 +1,42 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Mensajeria;
 
 public interface IPublicador
 {
-    /// <summary>Publica y espera la confirmación del broker. Si vuelve sin excepción, el mensaje está en la cola.</summary>
+    /// <summary>
+    /// Publica y espera la confirmación del broker. Si un routing key no tiene
+    /// cola vinculada, esto lanza <see cref="RabbitMQ.Client.Exceptions.PublishReturnException"/>
+    /// (ver <see cref="PublicadorRabbit"/>) — el llamador ya debe tratar cualquier
+    /// excepción de este método como "no se pudo encolar" (§C7).
+    /// </summary>
     Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Publicador con <b>publisher confirms</b>. Sin confirmación no habría forma de
-/// saber si el mensaje se perdió, y el §C7 depende justamente de eso: si la
-/// publicación falla, la carga pasa a estado terminal Fallida.
+/// Publicador con <b>publisher confirms</b>. Con <c>publisherConfirmationTrackingEnabled</c>
+/// (RabbitMQ.Client 7), el cliente correlaciona internamente el "basic.return" con
+/// el confirm pendiente: un routing key sin cola vinculada (<c>mandatory: true</c>)
+/// no se pierde en silencio — hace fallar <see cref="PublicarAsync{T}"/> con
+/// <see cref="RabbitMQ.Client.Exceptions.PublishReturnException"/>, que
+/// <c>ServicioCargas.RegistrarAsync</c> ya captura y trata como fallo de
+/// publicación (§C7: la carga pasa a <c>Fallida</c>). Verificado con un routing
+/// key inexistente contra un broker real — no es una suposición de la librería,
+/// es el comportamiento observado en RabbitMQ.Client 7.2.2.
+///
+/// El log adicional de <see cref="AlRetornarMensajeAsync"/> no es la red de
+/// seguridad (la excepción ya lo es): es una línea con campos estructurados
+/// (exchange, routing key, reply code) para diagnosticar más rápido cuál mensaje
+/// se devolvió, sin tener que parsear el texto de la excepción.
 /// </summary>
-public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones) : IPublicador, IAsyncDisposable
+public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
+    : IPublicador, IAsyncDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -64,6 +83,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones) : IPubli
             _canal = await _conexion.CreateChannelAsync(
                 new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true),
                 ct);
+            _canal.BasicReturnAsync += AlRetornarMensajeAsync;
 
             await Topologia.DeclararAsync(_canal, _opciones.ReintentoSegundos, ct);
             return _canal;
@@ -72,6 +92,16 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones) : IPubli
         {
             _candado.Release();
         }
+    }
+
+    private Task AlRetornarMensajeAsync(object? sender, BasicReturnEventArgs e)
+    {
+        log.LogError(
+            "Mensaje sin ruta: exchange={Exchange} routingKey={RoutingKey} replyCode={ReplyCode} replyText={ReplyText} messageId={MessageId}. " +
+            "La topología se declara completa antes de publicar — esto indica un defecto de código, no una falla transitoria.",
+            e.Exchange, e.RoutingKey, e.ReplyCode, e.ReplyText, e.BasicProperties.MessageId);
+
+        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()

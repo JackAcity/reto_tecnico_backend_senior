@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Services\Auth\Auth.Api\Auth.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Control\Control.Api\Control.Api.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Mensajeria\Mensajeria.csproj" />
   </ItemGroup>
 
 </Project>

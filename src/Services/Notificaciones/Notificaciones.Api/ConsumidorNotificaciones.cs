@@ -1,28 +1,30 @@
 using System.Text.Json;
-using CargaMasiva.Infrastructure;
 using Mensajeria;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Serilog.Context;
 
-namespace CargaMasiva.Api;
+namespace Notificaciones.Api;
 
 /// <summary>
-/// El núcleo del reto (§3️⃣). Prefetch 1: cada carga puede ser un archivo grande,
-/// no tiene sentido bajar N a la vez. Ack manual: solo se confirma cuando
-/// <see cref="ManejadorCarga"/> terminó sin excepción — si el proceso muere a
-/// mitad de camino, el mensaje vuelve a la cola (§C8, el consumidor es idempotente
-/// vía la clave de negocio y el chequeo de estado).
+/// §4️⃣. Mismo patrón que ConsumidorCargaMasiva (prefetch 1, ack manual, tope de
+/// reintentos vía x-death), con una diferencia real: al agotar los intentos NO
+/// hay transición de estado que marcar. MaquinaEstados solo permite
+/// Finalizado → Notificado — no existe un Finalizado → Fallida, porque la carga
+/// ya tuvo éxito en lo que importa (§3.3: los datos quedaron insertados). Un
+/// correo que nunca sale es un problema operativo, no de negocio: se audita
+/// fuerte en el log y el mensaje queda en notificaciones.muertos para revisión
+/// manual, sin tocar carga_archivo.
 /// </summary>
-public sealed class ConsumidorCargaMasiva(
+public sealed class ConsumidorNotificaciones(
     IServiceScopeFactory scopeFactory,
     IOptions<OpcionesRabbit> opciones,
-    ILogger<ConsumidorCargaMasiva> log) : BackgroundService
+    ILogger<ConsumidorNotificaciones> log) : BackgroundService
 {
-    /// <summary>Intentos sobre <c>carga_masiva</c> antes de darse por vencido y mandar a la cola de muertos.</summary>
     public const int MaxIntentos = 3;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -49,10 +51,8 @@ public sealed class ConsumidorCargaMasiva(
         var consumidor = new AsyncEventingBasicConsumer(_canal);
         consumidor.ReceivedAsync += async (_, ea) => await ProcesarEntregaAsync(ea, ct);
 
-        await _canal.BasicConsumeAsync(Topologia.ColaCarga, autoAck: false, consumidor, ct);
+        await _canal.BasicConsumeAsync(Topologia.ColaNotificaciones, autoAck: false, consumidor, ct);
 
-        // BasicConsumeAsync no bloquea: el propio BackgroundService debe quedar
-        // vivo mientras el host corra, entregando el control al consumidor por evento.
         await Task.Delay(Timeout.InfiniteTimeSpan, ct);
     }
 
@@ -62,34 +62,32 @@ public sealed class ConsumidorCargaMasiva(
         var correlationId = ea.BasicProperties.CorrelationId ?? "";
         using var _ = LogContext.PushProperty("CorrelationId", correlationId);
 
-        MensajeCarga? mensaje = null;
+        MensajeNotificacion? mensaje = null;
         try
         {
-            mensaje = JsonSerializer.Deserialize<MensajeCarga>(ea.Body.Span, Json);
+            mensaje = JsonSerializer.Deserialize<MensajeNotificacion>(ea.Body.Span, Json);
             if (mensaje is null)
-                throw new InvalidOperationException("Mensaje de carga vacío o mal formado.");
+                throw new InvalidOperationException("Mensaje de notificación vacío o mal formado.");
 
             await using var alcance = scopeFactory.CreateAsyncScope();
-            var manejador = alcance.ServiceProvider.GetRequiredService<ManejadorCarga>();
-            await manejador.ProcesarAsync(mensaje, correlationId, ctHost);
+            var manejador = alcance.ServiceProvider.GetRequiredService<ManejadorNotificacion>();
+            await manejador.ProcesarAsync(mensaje, ctHost);
 
             await canal.BasicAckAsync(ea.DeliveryTag, multiple: false, ctHost);
         }
         catch (Exception ex)
         {
-            var intentos = Topologia.ContarIntentosPrevios(ea.BasicProperties.Headers, Topologia.ColaCarga);
-            log.LogError(ex, "Fallo procesando carga {IdCarga}, intento {Intento}/{Max}",
+            var intentos = Topologia.ContarIntentosPrevios(ea.BasicProperties.Headers, Topologia.ColaNotificaciones);
+            log.LogError(ex, "Fallo enviando notificación de carga {IdCarga}, intento {Intento}/{Max}",
                 mensaje?.IdCarga, intentos + 1, MaxIntentos);
 
             if (intentos + 1 >= MaxIntentos)
             {
-                // Un nack normal volvería a mandarlo al ciclo de reintento (DLX ->
-                // TTL -> de vuelta a esta misma cola). Se publica a mano en la cola
-                // de muertos para cortar el ciclo, y se audita en carga_archivo en
-                // vez de dejar la carga colgada sin explicación.
-                // BasicPublishAsync exige BasicProperties (mutable); la entrega solo
-                // trae IReadOnlyBasicProperties, así que se copian los campos que
-                // importan para diagnosticar el mensaje en la cola de muertos.
+                log.LogCritical(
+                    "Carga {IdCarga}: se agotaron los {Max} intentos de notificación. " +
+                    "El usuario no recibirá el correo; el mensaje queda en {ColaMuertos} para revisión manual.",
+                    mensaje?.IdCarga, MaxIntentos, Topologia.ColaNotificacionesMuertos);
+
                 var propiedades = new BasicProperties
                 {
                     ContentType = ea.BasicProperties.ContentType,
@@ -99,11 +97,8 @@ public sealed class ConsumidorCargaMasiva(
                     Headers = ea.BasicProperties.Headers
                 };
                 await canal.BasicPublishAsync(
-                    Topologia.Exchange, Topologia.RkCargaMuerto, mandatory: false,
+                    Topologia.Exchange, Topologia.RkNotificacionMuerto, mandatory: false,
                     propiedades, ea.Body, ctHost);
-
-                if (mensaje is not null)
-                    await MarcarFallidaAsync(mensaje.IdCarga, ex.Message, ctHost);
 
                 await canal.BasicAckAsync(ea.DeliveryTag, multiple: false, ctHost);
             }
@@ -111,22 +106,6 @@ public sealed class ConsumidorCargaMasiva(
             {
                 await canal.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, ctHost);
             }
-        }
-    }
-
-    private async Task MarcarFallidaAsync(int idCarga, string error, CancellationToken ct)
-    {
-        await using var alcance = scopeFactory.CreateAsyncScope();
-        var db = alcance.ServiceProvider.GetRequiredService<Persistencia.RetoDbContext>();
-        var carga = await db.CargaArchivos.FindAsync([idCarga], ct);
-
-        // Puede que ya haya transicionado a un estado terminal en un intento previo
-        // (poco probable, pero MaquinaEstados.Validar lanzaría si se fuerza igual).
-        if (carga is { Estado: CargaMasiva.Domain.EstadoCarga.Pendiente or CargaMasiva.Domain.EstadoCarga.EnProceso })
-        {
-            carga.Transicionar(CargaMasiva.Domain.EstadoCarga.Fallida);
-            carga.MensajeError = $"Agotados los {MaxIntentos} intentos: {error}";
-            await db.SaveChangesAsync(ct);
         }
     }
 

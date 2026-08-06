@@ -78,10 +78,25 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 7 — Notificaciones (h 14–15)
 
-- [ ] 7.1 Consumidor de `notificaciones`
-- [ ] 7.2 Correo con MailKit → MailHog, plantilla con resumen (insertados / rechazados)
-- [ ] 7.3 Estado → `Notificado`
-- [ ] 7.4 Configuración SMTP por variables de entorno **(obligatorio)**
+- [x] 7.1 Consumidor de `notificaciones` — mismo patrón que CargaMasiva (prefetch 1, ack
+      manual, tope de 3 intentos vía `x-death`); al agotarse NO marca `Fallida` (no existe
+      esa transición desde `Finalizado` en la máquina de estados) — solo audita fuerte en
+      el log y deja el mensaje en `notificaciones.muertos`
+- [x] 7.2 Correo con MailKit → Mailpit, con resumen (insertados / rechazados) — los números
+      se leen de `carga_archivo`, no viajan en el mensaje (misma razón que el correlationId:
+      una sola fuente de verdad)
+- [x] 7.3 Estado → `Notificado`
+- [x] 7.4 Configuración SMTP por variables de entorno **(obligatorio)** — falla al arrancar
+      si falta `Smtp:Host/Puerto/Desde` (Usuario/Password opcionales, Mailpit no los exige)
+- [x] 7.5 **Verificación: subida real → `Pendiente → EnProceso → Finalizado → Notificado` →
+      correo recibido en Mailpit con "Filas insertadas: 154 / Filas rechazadas: 46"** ✅ 06-ago 23:35
+      (bug real encontrado y corregido en el camino: la cola `notificaciones` quedó
+      declarada con argumentos distintos entre Control —imagen vieja— y CargaMasiva/
+      Notificaciones —imagen nueva— tras generalizar el circuito de reintento a las dos
+      colas; RabbitMQ exige argumentos idénticos y rechazó la declaración con
+      `PRECONDITION_FAILED`. No era un bug de diseño: había que reconstruir los 5 servicios,
+      no solo los 2 tocados — cualquier cambio a `src/Shared/Mensajeria` obliga a
+      reconstruir TODO lo que declara topología, no solo el servicio editado.)
 
 ## Bloque 8 — Entregables (h 15–17)
 

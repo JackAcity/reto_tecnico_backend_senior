@@ -3,6 +3,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\Shared\Persistencia\Persistencia.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Mensajeria\Mensajeria.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
   </ItemGroup>
 
   <PropertyGroup>

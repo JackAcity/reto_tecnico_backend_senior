@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\src\Shared\Mensajeria\Mensajeria.csproj" />
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Api\CargaMasiva.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\Notificaciones\Notificaciones.Api\Notificaciones.Api.csproj" />
   </ItemGroup>
 
 </Project>

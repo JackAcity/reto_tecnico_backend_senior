@@ -1,3 +1,5 @@
+using CargaMasiva.Application;
+using CargaMasiva.Domain;
 using Npgsql;
 
 namespace CargaMasiva.Tests;
@@ -34,7 +36,11 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
         await _cn.DisposeAsync();
     }
 
-    private async Task<int> NuevaCargaAsync(string estado)
+    // El estado se persiste como el NOMBRE del enum (HasConversion<string>(),
+    // RetoDbContext.cs): pasar el enum y convertir acá adentro es la única forma
+    // de que un rename del enum rompa la compilación en vez de romper en silencio
+    // un literal "EnProceso" suelto en el test.
+    private async Task<int> NuevaCargaAsync(EstadoCarga estado)
     {
         await using var cmd = new NpgsqlCommand("""
             INSERT INTO carga_archivo
@@ -42,22 +48,30 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
             VALUES ('prueba.xlsx', 1024, 'test@reto.local', now(), @estado, 'test')
             RETURNING id;
             """, _cn, _tx);
-        cmd.Parameters.AddWithValue("estado", estado);
+        cmd.Parameters.AddWithValue("estado", estado.ToString());
         return (int)(await cmd.ExecuteScalarAsync())!;
     }
 
-    private async Task<string> ResolverPeriodoAsync(int idCarga, string periodo = Periodo)
+    /// <summary>
+    /// El SP devuelve un string plano (SQL no conoce enums de C#). El nombre
+    /// devuelto debe coincidir con un miembro de <see cref="ResultadoPeriodo"/> —
+    /// es el mismo vocabulario que usará el consumidor de CargaMasiva (Bloque 6)
+    /// para interpretar el veredicto, así que se valida acá con <c>Enum.Parse</c>
+    /// en vez de comparar el string crudo.
+    /// </summary>
+    private async Task<ResultadoPeriodo> ResolverPeriodoAsync(int idCarga, string periodo = Periodo)
     {
         await using var cmd = new NpgsqlCommand("SELECT sp_resolver_periodo(@id, @periodo::varchar);", _cn, _tx);
         cmd.Parameters.AddWithValue("id", idCarga);
         cmd.Parameters.AddWithValue("periodo", periodo);
-        return (string)(await cmd.ExecuteScalarAsync())!;
+        var texto = (string)(await cmd.ExecuteScalarAsync())!;
+        return Enum.Parse<ResultadoPeriodo>(texto);
     }
 
-    private async Task CambiarEstadoAsync(int idCarga, string estado)
+    private async Task CambiarEstadoAsync(int idCarga, EstadoCarga estado)
     {
         await using var cmd = new NpgsqlCommand("UPDATE carga_archivo SET estado = @estado WHERE id = @id;", _cn, _tx);
-        cmd.Parameters.AddWithValue("estado", estado);
+        cmd.Parameters.AddWithValue("estado", estado.ToString());
         cmd.Parameters.AddWithValue("id", idCarga);
         await cmd.ExecuteNonQueryAsync();
     }
@@ -80,49 +94,49 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
     [Fact]
     public async Task PropiaCarga_NoSeAutoBloquea_NiSiquieraAlReintentar()
     {
-        var carga = await NuevaCargaAsync("EnProceso");
+        var carga = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
-        Assert.Equal("Libre", await ResolverPeriodoAsync(carga));
+        Assert.Equal(ResultadoPeriodo.Libre, await ResolverPeriodoAsync(carga));
         // Reentrega del mismo mensaje (§C8): sigue siendo Libre, sin fila duplicada.
-        Assert.Equal("Libre", await ResolverPeriodoAsync(carga));
+        Assert.Equal(ResultadoPeriodo.Libre, await ResolverPeriodoAsync(carga));
     }
 
     /// <summary>§3.3 — otra carga en vuelo sobre el mismo periodo bloquea.</summary>
     [Fact]
     public async Task OtraCargaEnProceso_BloqueaElPeriodo()
     {
-        var primera = await NuevaCargaAsync("EnProceso");
+        var primera = await NuevaCargaAsync(EstadoCarga.EnProceso);
         await ResolverPeriodoAsync(primera);
 
-        var segunda = await NuevaCargaAsync("EnProceso");
+        var segunda = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
-        Assert.Equal("Bloqueado", await ResolverPeriodoAsync(segunda));
+        Assert.Equal(ResultadoPeriodo.Bloqueado, await ResolverPeriodoAsync(segunda));
     }
 
     /// <summary>§3.3 — periodo ya cargado: se rechaza, con motivo distinto al bloqueo.</summary>
     [Fact]
     public async Task PeriodoYaFinalizado_DevuelveYaCargado()
     {
-        var primera = await NuevaCargaAsync("EnProceso");
+        var primera = await NuevaCargaAsync(EstadoCarga.EnProceso);
         await ResolverPeriodoAsync(primera);
-        await CambiarEstadoAsync(primera, "Finalizado");
+        await CambiarEstadoAsync(primera, EstadoCarga.Finalizado);
 
-        var segunda = await NuevaCargaAsync("EnProceso");
+        var segunda = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
-        Assert.Equal("YaCargado", await ResolverPeriodoAsync(segunda));
+        Assert.Equal(ResultadoPeriodo.YaCargado, await ResolverPeriodoAsync(segunda));
     }
 
     /// <summary>Una carga que murió no puede reservar el periodo para siempre.</summary>
     [Fact]
     public async Task CargaFallida_LiberaElPeriodo()
     {
-        var primera = await NuevaCargaAsync("EnProceso");
+        var primera = await NuevaCargaAsync(EstadoCarga.EnProceso);
         await ResolverPeriodoAsync(primera);
-        await CambiarEstadoAsync(primera, "Fallida");
+        await CambiarEstadoAsync(primera, EstadoCarga.Fallida);
 
-        var segunda = await NuevaCargaAsync("EnProceso");
+        var segunda = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
-        Assert.Equal("Libre", await ResolverPeriodoAsync(segunda));
+        Assert.Equal(ResultadoPeriodo.Libre, await ResolverPeriodoAsync(segunda));
     }
 
     /// <summary>
@@ -132,7 +146,7 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
     [Fact]
     public async Task InsercionMasiva_ClaveEsPeriodoMasCodigo()
     {
-        var carga = await NuevaCargaAsync("EnProceso");
+        var carga = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
         var insertadas = await InsertarLoteAsync(carga,
             periodos: [Periodo, "2099-02", Periodo],
@@ -148,7 +162,7 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
     [Fact]
     public async Task InsercionMasiva_ReprocesarNoDuplica()
     {
-        var carga = await NuevaCargaAsync("EnProceso");
+        var carga = await NuevaCargaAsync(EstadoCarga.EnProceso);
         string[] periodos = [Periodo];
         string[] codigos = ["P0500"];
         string[] nombres = ["Producto"];

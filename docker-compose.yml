@@ -30,7 +30,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports: ["5432:5432"]
+    # 127.0.0.1 y no 0.0.0.0: "5432:5432" publica en TODAS las interfaces, o sea
+    # alcanzable desde cualquier otra máquina en la misma red que la del evaluador.
+    # Con credenciales de ejemplo en .env, eso es una base de datos abierta a la
+    # LAN. Acotar a loopback no rompe nada: psql/EF/tests siguen usando localhost.
+    ports: ["127.0.0.1:5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -43,9 +47,12 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    # Loopback-only por la misma razón que postgres — el 15672 queda igual de
+    # accesible para grabar el video (localhost:15672 en el navegador del propio
+    # evaluador), pero ya no expuesto a la LAN.
     ports:
-      - "5672:5672"
-      - "15672:15672"   # consola de administración — se muestra en el video
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"   # consola de administración — se muestra en el video
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -56,9 +63,9 @@ services:
     image: chrislusf/seaweedfs:latest
     command: server -dir=/data -master.volumeSizeLimitMB=64 -filer -s3
     ports:
-      - "9333:9333"   # master
-      - "8888:8888"   # filer (HTTP API que usa Control)
-      - "8333:8333"   # gateway S3
+      - "127.0.0.1:9333:9333"   # master
+      - "127.0.0.1:8888:8888"   # filer (HTTP API que usa Control)
+      - "127.0.0.1:8333:8333"   # gateway S3
     volumes: ["seaweeddata:/data"]
     healthcheck:
       # 127.0.0.1 y no "localhost": el wget de BusyBox resuelve localhost a ::1
@@ -73,8 +80,8 @@ services:
     # sin credenciales reales. Imprescindible para la demo en video.
     image: axllent/mailpit:latest
     ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # UI web
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # UI web
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 10s
@@ -85,7 +92,9 @@ services:
   gateway:
     <<: *servicio-net
     build: { context: ., dockerfile: src/Gateway/Dockerfile }
-    ports: ["8080:8080"]
+    # Única puerta pública del sistema (design.md): también acotada a loopback,
+    # nada obliga a que sea alcanzable desde la LAN del evaluador.
+    ports: ["127.0.0.1:8080:8080"]
     depends_on:
       auth:          { condition: service_healthy }
       control:       { condition: service_healthy }

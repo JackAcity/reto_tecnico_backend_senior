@@ -41,6 +41,27 @@ public sealed class ServicioCargas(
         return null;
     }
 
+    /// <summary>Firma ZIP local-file-header: todo <c>.xlsx</c> (OOXML) es, por dentro, un zip.</summary>
+    private static readonly byte[] FirmaZip = [0x50, 0x4B, 0x03, 0x04];
+
+    /// <summary>
+    /// La extensión es un metadato que el cliente controla — renombrar cualquier
+    /// archivo a <c>.xlsx</c> pasa <see cref="ValidarArchivo"/> sin problema. Esto
+    /// verifica que el contenido empiece como zip antes de aceptarlo, para no
+    /// gastar SeaweedFS + una cola + un ciclo de CargaMasiva en basura que iba a
+    /// fallar de todos modos al intentar leerse como Excel.
+    /// </summary>
+    public static async Task<string?> ValidarFirmaAsync(Stream contenido, CancellationToken ct = default)
+    {
+        var firma = new byte[FirmaZip.Length];
+        var leidos = await contenido.ReadAsync(firma, ct);
+        contenido.Position = 0;   // el stream se reutiliza para la subida real
+
+        return leidos == FirmaZip.Length && firma.AsSpan().SequenceEqual(FirmaZip)
+            ? null
+            : "El archivo no es un .xlsx válido (no tiene firma binaria de un archivo ZIP/OOXML).";
+    }
+
     public async Task<ResultadoRegistro> RegistrarAsync(
         Stream contenido, string nombreArchivo, long tamanoBytes, string usuario, string correlationId, CancellationToken ct = default)
     {

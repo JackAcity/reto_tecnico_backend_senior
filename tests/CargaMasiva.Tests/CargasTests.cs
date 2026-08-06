@@ -51,6 +51,47 @@ public class ValidacionArchivoTests
 }
 
 /// <summary>
+/// La extensión la controla el cliente; esto prueba el contenido real. Un
+/// archivo renombrado a .xlsx pasa ValidarArchivo pero no tiene firma ZIP.
+/// </summary>
+public class ValidacionFirmaTests
+{
+    [Fact]
+    public async Task ContenidoZip_PasaLaValidacion()
+    {
+        Stream contenido = new MemoryStream([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00]);
+
+        Assert.Null(await ServicioCargas.ValidarFirmaAsync(contenido));
+    }
+
+    [Fact]
+    public async Task TextoRenombradoAXlsx_SeRechazaPorFirma()
+    {
+        Stream contenido = new MemoryStream("esto no es un excel, es texto plano"u8.ToArray());
+
+        Assert.Contains("firma binaria", await ServicioCargas.ValidarFirmaAsync(contenido));
+    }
+
+    [Fact]
+    public async Task ArchivoDeMenosDe4Bytes_SeRechaza()
+    {
+        Stream contenido = new MemoryStream([0x50, 0x4B]);
+
+        Assert.NotNull(await ServicioCargas.ValidarFirmaAsync(contenido));
+    }
+
+    [Fact]
+    public async Task DespuesDeValidar_ElStreamQuedaEnPosicionCero()
+    {
+        Stream contenido = new MemoryStream([0x50, 0x4B, 0x03, 0x04, 0x01, 0x02]);
+
+        await ServicioCargas.ValidarFirmaAsync(contenido);
+
+        Assert.Equal(0, contenido.Position);
+    }
+}
+
+/// <summary>
 /// §2️⃣ de punta a punta por el gateway: sube, registra en Pendiente y encola.
 /// Requiere el stack levantado — <c>docker compose up -d</c>.
 /// </summary>
@@ -59,11 +100,14 @@ public sealed class CargasTests(GatewayFixture fixture) : IClassFixture<GatewayF
     private static readonly string RutaMuestra =
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "samples", "carga_masiva_productos.xlsx"));
 
-    private HttpRequestMessage Subida(string rutaArchivo, string nombreEnvio)
+    private HttpRequestMessage Subida(string rutaArchivo, string nombreEnvio) =>
+        SubidaBytes(File.ReadAllBytes(rutaArchivo), nombreEnvio);
+
+    private HttpRequestMessage SubidaBytes(byte[] bytes, string nombreEnvio)
     {
         var contenido = new MultipartFormDataContent
         {
-            { new ByteArrayContent(File.ReadAllBytes(rutaArchivo)), "archivo", nombreEnvio }
+            { new ByteArrayContent(bytes), "archivo", nombreEnvio }
         };
 
         var peticion = new HttpRequestMessage(HttpMethod.Post, "/cargas") { Content = contenido };
@@ -104,6 +148,21 @@ public sealed class CargasTests(GatewayFixture fixture) : IClassFixture<GatewayF
         var respuesta = await fixture.Cliente.SendAsync(Subida(RutaMuestra, "catalogo.csv"));
 
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+    }
+
+    /// <summary>
+    /// La extensión sola no protege nada — el cliente la elige. Un .txt renombrado
+    /// a .xlsx pasa el primer filtro y debe caer en la verificación de firma ZIP.
+    /// </summary>
+    [Fact]
+    public async Task Subir_TextoPlanoRenombradoAXlsx_Da400PorFirma()
+    {
+        var bytes = "esto no es un excel, es texto plano disfrazado"u8.ToArray();
+
+        var respuesta = await fixture.Cliente.SendAsync(SubidaBytes(bytes, "catalogo.xlsx"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+        Assert.Contains("firma binaria", await respuesta.Content.ReadAsStringAsync());
     }
 
     [Fact]

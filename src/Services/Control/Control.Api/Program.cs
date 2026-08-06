@@ -44,11 +44,19 @@ app.MapPost("/cargas", async (
     if (error is not null)
         return Results.ValidationProblem(new Dictionary<string, string[]> { ["archivo"] = [error] });
 
+    await using var contenido = archivo!.OpenReadStream();
+
+    // La extensión la controla el cliente; esto valida que el contenido en sí
+    // empiece como zip, para no gastar SeaweedFS + una cola + un ciclo de
+    // CargaMasiva en un archivo que iba a fallar de todos modos.
+    var errorFirma = await ServicioCargas.ValidarFirmaAsync(contenido, ct);
+    if (errorFirma is not null)
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["archivo"] = [errorFirma] });
+
     var usuario = http.User.FindFirst("email")?.Value ?? http.User.Identity?.Name ?? "desconocido";
     var correlationId = http.Response.Headers[ServiceDefaults.CorrelationHeader].FirstOrDefault()
                         ?? Guid.NewGuid().ToString("N");
 
-    await using var contenido = archivo!.OpenReadStream();
     var resultado = await servicio.RegistrarAsync(contenido, archivo.FileName, archivo.Length, usuario, correlationId, ct);
 
     // La carga quedó registrada y auditada aunque el encolado falle (§C7): por eso

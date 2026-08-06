@@ -38,6 +38,18 @@ public static class ServiceDefaults
     {
         app.UseExceptionHandler();
 
+        // Único header de seguridad que rinde acá: los 5 servicios son APIs JSON
+        // puras, sin vistas HTML que un navegador renderice, así que CSP/X-Frame-
+        // Options no protegen nada real (no hay página que clickjackear ni script
+        // que inyectar). nosniff sí es universal y gratis: evita que un cliente
+        // que decida "oler" el content-type reinterprete una respuesta JSON como
+        // algo ejecutable.
+        app.Use(async (ctx, next) =>
+        {
+            ctx.Response.Headers.XContentTypeOptions = "nosniff";
+            await next();
+        });
+
         // El CorrelationId entra por header HTTP y se propaga al log de todo el request.
         // Hacia RabbitMQ viaja como header AMQP, para no alterar el contrato de mensaje
         // que el enunciado define de forma literal (ver design.md §M2).

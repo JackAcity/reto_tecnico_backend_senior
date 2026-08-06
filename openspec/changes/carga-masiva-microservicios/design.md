@@ -174,6 +174,44 @@ sea el mecanismo — y el salto a Vault es infraestructura desproporcionada para
 que se levanta una sola vez, en una sola máquina, sin superficie de red expuesta más allá
 de `localhost`. Trade-off consciente, no descuido.
 
+### C14 — Endurecimiento adicional (seguridad por diseño)
+
+Tampoco pedido por el enunciado, pero auditado a pedido explícito con criterio DevSecOps.
+Tres controles de alto valor y bajo costo, aplicados; tres descartados con su razón.
+
+**Aplicados:**
+
+1. **Contenedores no-root.** Verificado con `docker compose exec gateway id` → daba
+   `uid=0(root)`. Las imágenes oficiales `mcr.microsoft.com/dotnet/aspnet` traen un
+   usuario no-root desde .NET 8, pero hay que activarlo — se agrega `USER $APP_UID`
+   a los 5 `Dockerfile` (fuente: `learn.microsoft.com/dotnet/core/whats-new/dotnet-8/containers`,
+   consultada en vivo). Costo: una línea por Dockerfile, cero regresión.
+2. **Puertos de infraestructura acotados a loopback.** `docker compose port postgres 5432`
+   devolvía `0.0.0.0:5432` — publicado en *todas* las interfaces, alcanzable desde
+   cualquier equipo en la misma red que la del evaluador, con credenciales de ejemplo
+   en `.env`. Se cambia a `127.0.0.1:5432:5432` (y equivalente en rabbitmq, seaweedfs,
+   mailpit, gateway). No rompe nada: tests, `psql`/`dotnet ef` y el video de demo usan
+   `localhost`, no la IP de red.
+3. **Validación de contenido, no solo de extensión.** `ValidarArchivo` (§2.4b) solo
+   miraba el nombre — un archivo renombrado a `.xlsx` lo pasaba igual. Se agrega
+   `ValidarFirmaAsync`: los primeros 4 bytes deben ser la firma ZIP local-file-header
+   (`PK\x03\x04`), porque todo `.xlsx` (OOXML) es por dentro un zip. Evita gastar
+   SeaweedFS + una cola + un ciclo de CargaMasiva en un archivo que iba a fallar de
+   todos modos al intentar leerse como Excel.
+4. **`X-Content-Type-Options: nosniff`**, en `ServiceDefaults` (un solo lugar para los
+   5 servicios). Único header de seguridad HTTP que rinde acá — ver por qué no los
+   demás, abajo.
+
+**Descartados, con razón:**
+
+| Control | Por qué no |
+|---|---|
+| **CSP / X-Frame-Options** | Protegen contenido HTML renderizado en navegador (XSS, clickjacking). Los 5 servicios son APIs JSON puras, sin vistas — no hay página que clickjackear ni script que inyectar. Se reevalúa si el cliente React opcional (O.1) se construye. |
+| **TLS/HTTPS local** | El modelo de amenaza real es "la propia máquina del evaluador", no un atacante en la red — y con el punto 2 ya resuelto, ni siquiera hay superficie de red más allá de `localhost`. Añadir certificados de desarrollo a 5 Dockerfiles + el gateway es costo real por un riesgo que no existe en este alcance. |
+| **CORS** | Solo aplica si un navegador llama a la API desde otro origen. No hay cliente browser hoy (Postman no aplica same-origin policy); se agrega junto con el cliente React si se construye. |
+| **Rate limiter con sliding window / token bucket** | El nativo (`FixedWindowRateLimiter`, Bloque 4) admite ráfaga doble en el borde de la ventana — límite conocido. Sliding window/token bucket exige código propio o un paquete de pago; el nativo ya cumple el requisito obligatorio (§4.3) sin esa brecha siendo explotable de forma práctica en este alcance. |
+| **Revocación de access token** | JWT stateless por diseño: un token robado sigue siendo válido hasta su expiración (60 min). Mitigarlo exige una lista de revocación consultada en cada request, lo que reintroduce el estado que el JWT stateless evita — trade-off estándar y documentado de cualquier sistema JWT sin sesión server-side; el refresh token sí rota y sí se revoca (Bloque 3). |
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

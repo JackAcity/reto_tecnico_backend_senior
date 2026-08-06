@@ -12,7 +12,8 @@ builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Post
 builder.Services.AddAlmacenamiento(builder.Configuration);
 builder.Services.AddMensajeria(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);
-builder.Services.AddScoped<ServicioCargas>();
+builder.Services.AddScoped<ServicioCargas>();   // comando: §2️⃣, escritura
+builder.Services.AddScoped<ConsultaCargas>();   // consulta: §5️⃣, solo lectura
 
 // §C12 — los mismos tres techos que el gateway, porque Control también puede
 // recibir tráfico directo dentro de la red de contenedores.
@@ -60,13 +61,13 @@ app.MapPost("/cargas", async (
 .DisableAntiforgery();   // API con Bearer, sin cookies: el token antiforgery no aplica
 
 // §5️⃣ — historial para el cliente web y para el polling de estados.
-app.MapGet("/cargas", async (ServicioCargas servicio, CancellationToken ct, int limite = 50) =>
-        Results.Ok(await servicio.HistorialAsync(Math.Clamp(limite, 1, 200), ct)))
+app.MapGet("/cargas", async (ConsultaCargas consulta, CancellationToken ct, int limite = 50) =>
+        Results.Ok(await consulta.HistorialAsync(Math.Clamp(limite, 1, 200), ct)))
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
 // §3.3c — detalle con los periodos resueltos y los fallidos auditados.
-app.MapGet("/cargas/{id:int}", async (int id, ServicioCargas servicio, CancellationToken ct, int limiteErrores = 100) =>
-        await servicio.DetalleAsync(id, Math.Clamp(limiteErrores, 1, 1000), ct) is { } detalle
+app.MapGet("/cargas/{id:int}", async (int id, ConsultaCargas consulta, CancellationToken ct, int limiteErrores = 100) =>
+        await consulta.DetalleAsync(id, Math.Clamp(limiteErrores, 1, 1000), ct) is { } detalle
             ? Results.Ok(detalle)
             : Results.NotFound(new { title = "Carga no encontrada", idCarga = id }))
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);

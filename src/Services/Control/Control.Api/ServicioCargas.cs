@@ -1,7 +1,6 @@
 using Almacenamiento;
 using CargaMasiva.Domain;
 using Mensajeria;
-using Microsoft.EntityFrameworkCore;
 using Persistencia;
 
 namespace Control.Api;
@@ -9,8 +8,9 @@ namespace Control.Api;
 public sealed record ResultadoRegistro(int IdCarga, string Estado, string? Error = null);
 
 /// <summary>
-/// El caso de uso del §2️⃣: validar, guardar el archivo, registrar la carga y
-/// publicar. Fuera de los endpoints para que el orden de los pasos —que es lo
+/// El comando del §2️⃣: validar, guardar el archivo, registrar la carga y publicar.
+/// Solo escritura — las consultas viven en <see cref="ConsultaCargas"/> (CQRS-lite,
+/// design.md §3). Fuera de los endpoints para que el orden de los pasos —que es lo
 /// que el §C7 pone en juego— se pueda probar sin HTTP.
 /// </summary>
 public sealed class ServicioCargas(
@@ -85,59 +85,4 @@ public sealed class ServicioCargas(
 
         return new ResultadoRegistro(carga.Id, carga.Estado.ToString());
     }
-
-    public async Task<IReadOnlyList<ResumenCarga>> HistorialAsync(int limite, CancellationToken ct = default) =>
-        await db.CargaArchivos
-            .AsNoTracking()
-            .OrderByDescending(c => c.Id)
-            .Take(limite)
-            .Select(c => new ResumenCarga(
-                c.Id, c.NombreArchivo, c.Usuario, c.FechaRegistro, c.Estado.ToString(),
-                c.TotalFilas, c.FilasInsertadas, c.FilasRechazadas, c.FechaFin))
-            .ToListAsync(ct);
-
-    public async Task<DetalleCarga?> DetalleAsync(int idCarga, int limiteErrores, CancellationToken ct = default)
-    {
-        var carga = await db.CargaArchivos
-            .AsNoTracking()
-            .Include(c => c.Periodos)
-            .SingleOrDefaultAsync(c => c.Id == idCarga, ct);
-
-        if (carga is null)
-            return null;
-
-        // El detalle de errores puede ser grande: se acota y se informa el total.
-        var totalErrores = await db.DetalleCargaErrores.CountAsync(e => e.CargaArchivoId == idCarga, ct);
-        var errores = await db.DetalleCargaErrores
-            .AsNoTracking()
-            .Where(e => e.CargaArchivoId == idCarga)
-            .OrderBy(e => e.Id)
-            .Take(limiteErrores)
-            .Select(e => new ErrorAuditado(
-                e.NumeroFila, e.Periodo, e.CodigoProducto, e.Columna, e.Motivo.ToString(), e.ValorCrudo))
-            .ToListAsync(ct);
-
-        return new DetalleCarga(
-            new ResumenCarga(carga.Id, carga.NombreArchivo, carga.Usuario, carga.FechaRegistro,
-                carga.Estado.ToString(), carga.TotalFilas, carga.FilasInsertadas, carga.FilasRechazadas, carga.FechaFin),
-            carga.RutaArchivo,
-            carga.MensajeError,
-            carga.CorrelationId,
-            [.. carga.Periodos.OrderBy(p => p.Periodo).Select(p => new PeriodoCarga(p.Periodo, p.Estado, p.FilasInsertadas))],
-            errores,
-            totalErrores);
-    }
 }
-
-public sealed record ResumenCarga(
-    int IdCarga, string NombreArchivo, string Usuario, DateTimeOffset FechaRegistro, string Estado,
-    int TotalFilas, int FilasInsertadas, int FilasRechazadas, DateTimeOffset? FechaFin);
-
-public sealed record PeriodoCarga(string Periodo, string Estado, int FilasInsertadas);
-
-public sealed record ErrorAuditado(
-    int NumeroFila, string? Periodo, string? CodigoProducto, string? Columna, string Motivo, string? ValorCrudo);
-
-public sealed record DetalleCarga(
-    ResumenCarga Carga, string? RutaArchivo, string? MensajeError, string CorrelationId,
-    IReadOnlyList<PeriodoCarga> Periodos, IReadOnlyList<ErrorAuditado> Errores, int TotalErrores);

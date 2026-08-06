@@ -45,11 +45,14 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 5 — Control / Publicador (h 7–9)
 
-- [ ] 5.1 `POST /cargas` multipart: valida extensión `.xlsx` y tamaño máximo configurable
-- [ ] 5.2 Subida a SeaweedFS (filer HTTP API) + auditoría de quién y cuándo
-- [ ] 5.3 `INSERT CargaArchivo` estado `Pendiente`
-- [ ] 5.4 Publica en exchange topic → cola `carga_masiva`; si falla → `Fallida` (C7)
-- [ ] 5.5 `GET /cargas` (historial) y `GET /cargas/{id}` (detalle + errores auditados)
+- [x] 5.1 `POST /cargas` multipart: valida extensión `.xlsx` y tamaño máximo configurable
+- [x] 5.2 Subida a SeaweedFS (filer HTTP API) + auditoría de quién y cuándo
+- [x] 5.3 `INSERT CargaArchivo` estado `Pendiente`
+- [x] 5.4 Publica en exchange topic → cola `carga_masiva`; si falla → `Fallida` (C7)
+      — con publisher confirms, si no no habría forma de saber que falló
+- [x] 5.5 `GET /cargas` (historial) y `GET /cargas/{id}` (detalle + periodos + errores auditados)
+- [x] 5.6 **Verificación: subida real por el gateway → 201 `Pendiente`, archivo íntegro en
+      SeaweedFS (10 006 bytes = original), 1 mensaje en `carga_masiva`, `.csv` → 400** ✅ 06-ago 08:10
 
 ## Bloque 6 — CargaMasiva ⭐ EL NÚCLEO (h 9–14)
 

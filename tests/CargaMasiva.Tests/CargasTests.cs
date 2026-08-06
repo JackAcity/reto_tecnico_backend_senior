@@ -1,0 +1,128 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using Control.Api;
+
+namespace CargaMasiva.Tests;
+
+/// <summary>§2.4b — extensión y tamaño. Lógica pura: no necesita base ni contenedores.</summary>
+public class ValidacionArchivoTests
+{
+    [Theory]
+    [InlineData("catalogo.xlsx", 1024, null)]
+    [InlineData("catalogo.XLSX", 1024, "mayúsculas también valen")]
+    public void ArchivoValido_NoDevuelveError(string nombre, long bytes, string? _)
+    {
+        Assert.Null(ServicioCargas.ValidarArchivo(nombre, bytes, tamanoMaximoMb: 25));
+    }
+
+    [Theory]
+    [InlineData("catalogo.csv")]
+    [InlineData("catalogo.xls")]
+    [InlineData("catalogo.xlsx.exe")]
+    [InlineData("catalogo")]
+    public void ExtensionDistintaDeXlsx_SeRechaza(string nombre)
+    {
+        Assert.Contains(".xlsx", ServicioCargas.ValidarArchivo(nombre, 1024, 25));
+    }
+
+    [Fact]
+    public void ArchivoVacio_SeRechaza()
+    {
+        Assert.Contains("vacío", ServicioCargas.ValidarArchivo("catalogo.xlsx", 0, 25));
+    }
+
+    [Fact]
+    public void ArchivoQueSuperaElMaximo_SeRechazaConElNumeroConfigurado()
+    {
+        var error = ServicioCargas.ValidarArchivo("catalogo.xlsx", 26L * 1024 * 1024, tamanoMaximoMb: 25);
+
+        Assert.Contains("25 MB", error);
+    }
+
+    [Fact]
+    public void ElMaximoEsConfigurable()
+    {
+        var bytes = 26L * 1024 * 1024;
+
+        Assert.NotNull(ServicioCargas.ValidarArchivo("catalogo.xlsx", bytes, tamanoMaximoMb: 25));
+        Assert.Null(ServicioCargas.ValidarArchivo("catalogo.xlsx", bytes, tamanoMaximoMb: 50));
+    }
+}
+
+/// <summary>
+/// §2️⃣ de punta a punta por el gateway: sube, registra en Pendiente y encola.
+/// Requiere el stack levantado — <c>docker compose up -d</c>.
+/// </summary>
+public sealed class CargasTests(GatewayFixture fixture) : IClassFixture<GatewayFixture>
+{
+    private static readonly string RutaMuestra =
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "samples", "carga_masiva_productos.xlsx"));
+
+    private HttpRequestMessage Subida(string rutaArchivo, string nombreEnvio)
+    {
+        var contenido = new MultipartFormDataContent
+        {
+            { new ByteArrayContent(File.ReadAllBytes(rutaArchivo)), "archivo", nombreEnvio }
+        };
+
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "/cargas") { Content = contenido };
+        peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", fixture.AccessToken);
+        return peticion;
+    }
+
+    private HttpRequestMessage Get(string ruta)
+    {
+        var peticion = new HttpRequestMessage(HttpMethod.Get, ruta);
+        peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", fixture.AccessToken);
+        return peticion;
+    }
+
+    [Fact]
+    public async Task Subir_XlsxValido_QuedaRegistradaEnPendienteYConRutaDeSeaweed()
+    {
+        var respuesta = await fixture.Cliente.SendAsync(Subida(RutaMuestra, "carga_masiva_productos.xlsx"));
+
+        Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
+
+        using var creada = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync());
+        var idCarga = creada.RootElement.GetProperty("idCarga").GetInt32();
+        Assert.Equal("Pendiente", creada.RootElement.GetProperty("estado").GetString());
+
+        var detalle = await fixture.Cliente.SendAsync(Get($"/cargas/{idCarga}"));
+        detalle.EnsureSuccessStatusCode();
+
+        using var json = JsonDocument.Parse(await detalle.Content.ReadAsStringAsync());
+        Assert.StartsWith("seaweed://", json.RootElement.GetProperty("rutaArchivo").GetString());
+        // Auditoría de quién y cuándo (§2️⃣).
+        Assert.Equal("admin@reto.local", json.RootElement.GetProperty("carga").GetProperty("usuario").GetString());
+    }
+
+    [Fact]
+    public async Task Subir_ConExtensionInvalida_Da400()
+    {
+        var respuesta = await fixture.Cliente.SendAsync(Subida(RutaMuestra, "catalogo.csv"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Historial_DevuelveLasCargasDelMasRecienteAlMasViejo()
+    {
+        var respuesta = await fixture.Cliente.SendAsync(Get("/cargas?limite=5"));
+        respuesta.EnsureSuccessStatusCode();
+
+        using var json = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync());
+        var ids = json.RootElement.EnumerateArray().Select(c => c.GetProperty("idCarga").GetInt32()).ToArray();
+
+        Assert.Equal(ids.OrderByDescending(i => i), ids);
+    }
+
+    [Fact]
+    public async Task Detalle_DeUnaCargaInexistente_Da404()
+    {
+        var respuesta = await fixture.Cliente.SendAsync(Get("/cargas/999999"));
+
+        Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
+    }
+}

@@ -1,10 +1,7 @@
-using System.Text;
 using System.Threading.RateLimiting;
 using BuildingBlocks;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.Tokens;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,39 +20,10 @@ var limiteTransporte = (tamanoMaximoMb + 1L) * 1024 * 1024;
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = limiteTransporte);
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = limiteTransporte);
 
-// ---------------------------------------------------------------------------
-// Validación del JWT en el borde. Los microservicios de atrás no publican
-// puertos (ver docker-compose.yml), así que esta es la única entrada.
-// ---------------------------------------------------------------------------
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
-    {
-        // Sin el mapeo heredado, los claims conservan su nombre original ("sub",
-        // "role", "permiso") y el particionado del rate limiter puede leerlos.
-        o.MapInboundClaims = false;
-        o.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]
-                    ?? throw new InvalidOperationException("Falta Jwt:Key."))),
-            ClockSkew = TimeSpan.FromSeconds(30),
-            NameClaimType = "sub",
-            RoleClaimType = "role"
-        };
-    });
-
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("autenticado", p => p.RequireAuthenticatedUser())
-    // §3.2a — no basta con estar autenticado: hay que tener el permiso de carga.
-    .AddPolicy("cargaMasiva", p => p
-        .RequireAuthenticatedUser()
-        .RequireClaim(Politicas.ClaimPermiso, Politicas.PermisoCargaMasiva));
+// Validación del JWT en el borde, con la misma configuración que usa Control
+// (BuildingBlocks.Autenticacion). Los microservicios de atrás no publican
+// puertos (ver docker-compose.yml), así que esta es la única entrada pública.
+builder.Services.AddAutenticacionJwt(builder.Configuration);
 
 // ---------------------------------------------------------------------------
 // Rate limiting (obligatorio). Particionado por `sub`: un usuario no consume la
@@ -119,8 +87,6 @@ app.Run();
 /// <summary>Configuración del borde en un solo lugar: políticas, rutas y destinos.</summary>
 internal static class Politicas
 {
-    public const string ClaimPermiso = "permiso";
-    public const string PermisoCargaMasiva = "carga:masiva";
     public const string LimitePorUsuario = "porUsuario";
     public const string LimiteCarga = "carga";
     public const string LimiteLogin = "login";
@@ -154,7 +120,7 @@ internal static class Politicas
             RouteId = "cargas",
             ClusterId = "control",
             Match = new RouteMatch { Path = "/cargas/{**resto}" },
-            AuthorizationPolicy = "cargaMasiva",
+            AuthorizationPolicy = Autenticacion.PoliticaCargaMasiva,
             RateLimiterPolicy = LimiteCarga,
             MaxRequestBodySize = limiteTransporte
         },
@@ -164,7 +130,7 @@ internal static class Politicas
             RouteId = "cargamasiva",
             ClusterId = "cargamasiva",
             Match = new RouteMatch { Path = "/servicios/cargamasiva/{**resto}" },
-            AuthorizationPolicy = "autenticado",
+            AuthorizationPolicy = Autenticacion.PoliticaAutenticado,
             RateLimiterPolicy = LimitePorUsuario,
             Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/servicios/cargamasiva" }]
         },
@@ -173,7 +139,7 @@ internal static class Politicas
             RouteId = "notificaciones",
             ClusterId = "notificaciones",
             Match = new RouteMatch { Path = "/servicios/notificaciones/{**resto}" },
-            AuthorizationPolicy = "autenticado",
+            AuthorizationPolicy = Autenticacion.PoliticaAutenticado,
             RateLimiterPolicy = LimitePorUsuario,
             Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/servicios/notificaciones" }]
         }

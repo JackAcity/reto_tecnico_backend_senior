@@ -77,6 +77,7 @@ public sealed class ServicioAutenticacion(RetoDbContext db, IOptions<OpcionesJwt
     {
         var token = await db.RefreshTokens
             .Include(t => t.Usuario)
+            .AsNoTracking()
             .SingleOrDefaultAsync(t => t.Token == refreshToken, ct);
 
         // ponytail: un token ya revocado solo devuelve 401. La detección de reuso
@@ -87,22 +88,35 @@ public sealed class ServicioAutenticacion(RetoDbContext db, IOptions<OpcionesJwt
         return await EmitirAsync(token.Usuario, token, ct);
     }
 
-    private async Task<ResultadoAutenticacion> EmitirAsync(Usuario usuario, RefreshToken? anterior, CancellationToken ct)
+    private async Task<ResultadoAutenticacion?> EmitirAsync(Usuario usuario, RefreshToken? anterior, CancellationToken ct)
     {
         var ahora = DateTimeOffset.UtcNow;
-        var nuevo = new RefreshToken
-        {
-            UsuarioId = usuario.Id,
-            Token = GenerarRefreshToken(),
-            ExpiraEn = ahora.AddDays(_jwt.RefreshExpiraDias)
-        };
+        var nuevoToken = GenerarRefreshToken();
 
         if (anterior is not null)
         {
-            anterior.RevocadoEn = ahora;
-            anterior.ReemplazadoPor = nuevo.Token;
+            // Rotación atómica (design.md §C18): dos refresh simultáneos con el mismo
+            // token leerían ambos "activo" antes de que cualquiera escriba — un UPDATE
+            // por PK sin guarda dejaría que el segundo pise el ReemplazadoPor del
+            // primero (lost update). El WHERE revocado_en IS NULL es el compare-and-swap
+            // que decide atómicamente quién ganó, igual criterio que sp_resolver_periodo
+            // (§C9) pero sin necesitar advisory lock: es una sola fila, un solo UPDATE.
+            var filas = await db.RefreshTokens
+                .Where(t => t.Id == anterior.Id && t.RevocadoEn == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.RevocadoEn, ahora)
+                    .SetProperty(t => t.ReemplazadoPor, nuevoToken), ct);
+
+            if (filas == 0)
+                return null;   // otro request ya rotó este token primero
         }
 
+        var nuevo = new RefreshToken
+        {
+            UsuarioId = usuario.Id,
+            Token = nuevoToken,
+            ExpiraEn = ahora.AddDays(_jwt.RefreshExpiraDias)
+        };
         db.RefreshTokens.Add(nuevo);
         await db.SaveChangesAsync(ct);
 

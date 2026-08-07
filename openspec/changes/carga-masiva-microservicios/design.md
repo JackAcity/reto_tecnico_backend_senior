@@ -307,6 +307,46 @@ topic", y meter Kafka (Zookeeper/KRaft, gestión de particiones, cluster de
 brokers) sería sobrecarga operativa pura para un docker-compose de demo — mismo
 argumento de costo/beneficio que C13/C14/C16.
 
+### C18 — Rotación de refresh token: lost-update entre dos refresh simultáneos
+
+Hallazgo posterior a la entrega original (repaso de arquitectura antes del video),
+no parte del enunciado: `RefrescarAsync` leía el token, decidía en C# si estaba
+activo, y recién después escribía (`ServicioAutenticacion.cs`, versión previa a
+este cambio). Dos requests `POST /auth/refresh` con el **mismo** refresh token,
+todavía activo, llegando al mismo tiempo (doble pestaña, retry sin esperar la
+respuesta anterior) es el mismo patrón TOCTOU que §C9, pero en una tabla sin
+ninguna guarda: `refresh_token` solo tiene `Token` único (trivial, es random) —
+nada de `[ConcurrencyCheck]`, `xmin` ni un `WHERE` condicional en el `UPDATE`
+que EF emite por PK. Resultado: los dos requests pueden leer el mismo estado
+"activo", y los dos terminan creando su propio hijo — un *lost update* clásico,
+el segundo `UPDATE` pisa el `ReemplazadoPor` del primero sin que nadie lo
+rechace. Distinto del caso ya cubierto por el comentario `ponytail:` de la
+misma clase (reuso *secuencial* de un token ya revocado, que sí devuelve 401);
+acá ninguno de los dos actuó mal — la carrera está en la escritura, no en el uso.
+
+**Resolución:** igual que §C9, un TOCTOU se cierra con lock o con escritura
+atómica condicional — acá no hace falta un advisory lock (es una sola fila, un
+solo `UPDATE`), alcanza con condición en el propio `WHERE`, estilo
+compare-and-swap: `ExecuteUpdateAsync` sobre `RefreshTokens.Where(t => t.Id ==
+anterior.Id && t.RevocadoEn == null)`. Si afecta 0 filas, alguien más ya rotó
+ese token primero → se trata como token inválido (mismo 401 que ya existía),
+en vez de crear un segundo hijo válido. Mismo espíritu que `ON CONFLICT DO
+NOTHING` de `sp_insertar_data_procesada` (§C8): el motor decide atómicamente
+quién ganó, no una lectura previa en código de aplicación.
+
+**Severidad:** baja — exige dos requests literalmente simultáneos con el mismo
+token válido; el impacto sin el fix es "dos sesiones hijas válidas en vez de
+una", no un bypass de autenticación. Se corrige de todos modos porque el
+mecanismo (lock vs. escritura atómica condicional) es el mismo criterio que ya
+se aplicó en §C9, y dejarlo asimétrico —protegido en `carga_periodo`, sin
+protección en `refresh_token`— es la clase de inconsistencia que un evaluador
+de criterio encuentra.
+
+**Test determinista:** `Refresh_RotacionConcurrente_SoloUnIntentoGanaLaCarrera`
+— simula la interleaving ejecutando dos intentos de rotación atómica contra el
+mismo token todavía activo: el primero afecta 1 fila, el segundo 0, y
+`ReemplazadoPor` queda con el valor del primero, nunca pisado por el segundo.
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

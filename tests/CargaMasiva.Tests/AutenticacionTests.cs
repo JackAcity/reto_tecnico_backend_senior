@@ -116,7 +116,12 @@ public sealed class AutenticacionTests : IAsyncLifetime
         Assert.NotEqual(inicial.RefreshToken, rotado.RefreshToken);
         Assert.True((await ValidarAsync(rotado.AccessToken)).IsValid);
 
-        var anterior = await _db.RefreshTokens.SingleAsync(t => t.Token == inicial.RefreshToken);
+        // AsNoTracking: ExecuteUpdateAsync (§C18) escribe directo en la base y no
+        // sincroniza la copia que el tracker ya tenía cacheada desde el INSERT del
+        // login — sin esto, EF devuelve esa instancia vieja en vez de leer la fila
+        // recién actualizada. En producción no aplica: cada request usa un
+        // DbContext nuevo, sin caché cruzada entre el login y el refresh.
+        var anterior = await _db.RefreshTokens.AsNoTracking().SingleAsync(t => t.Token == inicial.RefreshToken);
         Assert.NotNull(anterior.RevocadoEn);
         Assert.Equal(rotado.RefreshToken, anterior.ReemplazadoPor);
     }
@@ -145,6 +150,36 @@ public sealed class AutenticacionTests : IAsyncLifetime
     public async Task Refresh_ConTokenDesconocido_Falla()
     {
         Assert.Null(await _svc.RefrescarAsync("token-que-no-existe"));
+    }
+
+    [Fact]
+    public async Task Refresh_RotacionConcurrente_SoloUnIntentoGanaLaCarrera()
+    {
+        // design.md §C18 — simula dos requests que llegaron con el mismo refresh
+        // token todavía activo (RevocadoEn IS NULL) antes de que cualquiera de los
+        // dos rote. La atomicidad real está en el UPDATE condicional que EmitirAsync
+        // ejecuta (ServicioAutenticacion.cs); alcanza con reproducir ese mismo
+        // guard dos veces contra el mismo estado inicial para probar que el
+        // segundo pierde la carrera en vez de pisar al primero (lost update).
+        var inicial = (await _svc.LoginAsync(_email, Password))!;
+        var anteriorId = (await _db.RefreshTokens.SingleAsync(t => t.Token == inicial.RefreshToken)).Id;
+
+        var filasA = await _db.RefreshTokens
+            .Where(t => t.Id == anteriorId && t.RevocadoEn == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.RevocadoEn, DateTimeOffset.UtcNow)
+                .SetProperty(t => t.ReemplazadoPor, "hijo-A"));
+        var filasB = await _db.RefreshTokens
+            .Where(t => t.Id == anteriorId && t.RevocadoEn == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.RevocadoEn, DateTimeOffset.UtcNow)
+                .SetProperty(t => t.ReemplazadoPor, "hijo-B"));
+
+        Assert.Equal(1, filasA);
+        Assert.Equal(0, filasB);
+
+        var anterior = await _db.RefreshTokens.AsNoTracking().SingleAsync(t => t.Id == anteriorId);
+        Assert.Equal("hijo-A", anterior.ReemplazadoPor);
     }
 
     [Fact]

@@ -232,6 +232,44 @@ los endpoints. Y el disparador para poblar esa proyección ya existe: cada cambi
 de estado ya publica en RabbitMQ; un proyector sería un consumidor más de la
 misma cola, no una reescritura.
 
+### C16 — Postgres en un contenedor: ¿riesgo de perder la base?
+
+Objeción planteada (de fuera, discutida con el usuario): *"está mal poner una BD en
+un contenedor porque si se borra se borra toda la base — se debería contratar como
+servicio administrado"*. La premisa mezcla dos cosas distintas y hay que separarlas.
+
+**El contenedor no es la causa del riesgo.** Un contenedor de Postgres no pierde
+datos al reiniciarse, pararse o reconstruir la imagen. Los pierde si (a) no tiene
+volumen persistente — el disco vive solo dentro del contenedor, efímero —, o (b)
+alguien borra el volumen a propósito, o (c) no hay backup y el disco físico falla.
+Ninguna de las tres es "por ser contenedor": pasan igual con Postgres instalado
+directo en un VM sin volumen redundante ni backup. Acá `pgdata:` (`docker-compose.yml`)
+ya es un volumen nombrado — `stop`/`start`/`restart`/reconstruir no toca los datos.
+Solo `docker compose down -v` explícito los borra, usado en esta sesión **a propósito**
+para probar el determinismo 154/46 desde cero, no por accidente.
+
+**Lo que "contratarla como servicio" (RDS, Cloud SQL, Azure Database) compra de
+verdad** no es "no perder datos" — eso lo da un volumen bien puesto. Es backup
+automático con point-in-time recovery, failover automático, parches sin operación
+manual, réplicas de lectura. Preocupaciones de **operación en producción**, no de
+dónde corre el proceso.
+
+**¿Es exclusivo de nube?** El producto específico (RDS/Cloud SQL) sí. El principio
+—que alguien o algo automatice backup + HA— no: Patroni (failover automático de
+Postgres on-premise), el operador CloudNativePG sobre Kubernetes propio, pgBackRest/
+Barman para backup y PITR sin nube, o vendors enterprise que venden "DBaaS" para
+correr en hardware propio. La pregunta correcta no es "¿contenedor o servicio
+administrado?", es "¿quién es dueño de backup y HA: un vendor de nube, un operador
+de Kubernetes, o un humano con un cron de `pg_basebackup`?" — cualquiera de las tres
+es válida; la que no lo es, es "nadie".
+
+**Resolución para este reto: no aplica.** Se evalúa con `docker compose up` una vez,
+en una máquina, sin datos de producción reales — mismo argumento que C13 (secretos)
+y C14 (TLS local): meter un servicio administrado ataría el proyecto a una cuenta de
+nube y facturación para que el evaluador ni siquiera pueda levantarlo, rompiendo el
+requisito real de `docker-compose` autocontenido. El volumen nombrado ya resuelve el
+riesgo real dentro de este alcance.
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

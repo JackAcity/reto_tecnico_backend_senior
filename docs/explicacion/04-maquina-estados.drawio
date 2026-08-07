@@ -1,0 +1,116 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="maquina-estados" id="maquina-estados-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="8 estados, transiciones cerradas — cualquier otro par lanza TransicionInvalidaException" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="900" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="init" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="630" y="35" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pendiente" value="Pendiente" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="90" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="enproceso" value="EnProceso" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="210" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fallida" value="Fallida" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="150" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cargado" value="Cargado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="330" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="rechazada" value="Rechazada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="330" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="bloqueada" value="Bloqueada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="330" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="finalizado" value="Finalizado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="440" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="notificado" value="Notificado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="550" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Marcadores finales ===== -->
+        <mxCell id="finRech" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="630" y="410" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="finBloq" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="960" y="410" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="finFall" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="230" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="finNoti" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="310" y="630" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Transiciones ===== -->
+        <mxCell id="e0" style="endArrow=block;html=1;" edge="1" parent="1" source="init" target="pendiente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="CargaMasiva consume el mensaje" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="pendiente" target="enproceso">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="falla la publicación&#10;(§C7, dual write)" style="endArrow=block;html=1;fontSize=10;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="pendiente" target="fallida">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" value="filas insertadas&#10;(≥1 periodo Libre)" style="endArrow=block;html=1;fontSize=10;strokeColor=#82b366;fontColor=#82b366;" edge="1" parent="1" source="enproceso" target="cargado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="ningún periodo libre,&#10;todos YaCargado" style="endArrow=block;html=1;fontSize=10;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="enproceso" target="rechazada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="ningún periodo libre,&#10;alguno Bloqueado (gana sobre Rechazada)" style="endArrow=block;html=1;fontSize=10;strokeColor=#d79b00;fontColor=#d79b00;" edge="1" parent="1" source="enproceso" target="bloqueada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="excepción no controlada,&#10;3 intentos agotados (x-death)" style="endArrow=block;html=1;fontSize=10;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="enproceso" target="fallida">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e7" value="auditoría cerrada,&#10;notificación publicada" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="cargado" target="finalizado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="correo enviado" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="finalizado" target="notificado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e9" style="endArrow=none;html=1;" edge="1" parent="1" source="rechazada" target="finRech">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="endArrow=none;html=1;" edge="1" parent="1" source="bloqueada" target="finBloq">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="endArrow=none;html=1;" edge="1" parent="1" source="fallida" target="finFall">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="endArrow=none;html=1;" edge="1" parent="1" source="notificado" target="finNoti">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Nota: reintentos de notificación agotados ===== -->
+        <mxCell id="notaSmtp" value="Reintentos de envío agotados (3x, DLX) → NO hay transición de vuelta. LogCritical + mensaje a notificaciones.muertos. La carga queda en Finalizado para siempre, sin Notificado — no existe camino de negocio para revertir un envío que 'ya tuvo éxito en los datos'." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="540" width="360" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="eNota" style="endArrow=block;dashed=1;html=1;strokeColor=#d6b656;" edge="1" parent="1" source="notificado" target="notaSmtp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Por qué 3 terminales además de Notificado ===== -->
+        <mxCell id="tabla" value="Rechazada (CargaMasiva) — hubo trabajo, cero filas útiles: todos los periodos ya cerrados. &#10;Bloqueada (CargaMasiva) — mismo caso, pero con OTRA carga compitiendo ahora: temporal, reintentable.&#10;Fallida (Control o CargaMasiva) — error técnico, no de negocio: archivo ilegible, cola caída, reintentos agotados." style="text;html=1;align=left;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="850" y="440" width="500" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

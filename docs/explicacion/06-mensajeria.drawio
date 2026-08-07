@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="mensajeria" id="mensajeria-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1340" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="Topología RabbitMQ real — 2 exchanges topic, 6 colas, mismo circuito de reintento aplicado a las dos colas de negocio" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="1100" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prodNote" value="Control publica MensajeCarga (rk carga.masiva)  ·  CargaMasiva publica MensajeNotificacion (rk carga.notificacion)" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="460" y="40" width="420" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="exCargas" value="Exchange topic: cargas" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="510" y="110" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Pipeline izquierdo: carga_masiva ===== -->
+        <mxCell id="colaCarga" value="carga_masiva&#10;rk: carga.masiva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="230" y="220" width="210" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="consumidorCM" value="CargaMasiva&#10;(consumidor)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="20" y="220" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="colaCargaReintento" value="carga_masiva.reintento&#10;x-message-ttl: reintentoSegundos&#10;rk: carga.masiva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="230" y="380" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="colaCargaMuertos" value="carga_masiva.muertos&#10;rk: carga.masiva.muerto" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Pipeline derecho: notificaciones ===== -->
+        <mxCell id="colaNoti" value="notificaciones&#10;rk: carga.notificacion" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="890" y="220" width="210" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="consumidorN" value="Notificaciones&#10;(consumidor)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="220" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="colaNotiReintento" value="notificaciones.reintento&#10;x-message-ttl: reintentoSegundos&#10;rk: carga.notificacion" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="890" y="380" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="colaNotiMuertos" value="notificaciones.muertos&#10;rk: carga.notificacion.muerto" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="380" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="exReintento" value="Exchange topic: cargas.reintento" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="510" y="500" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Flechas ===== -->
+        <mxCell id="p1" style="endArrow=block;html=1;" edge="1" parent="1" source="prodNote" target="exCargas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="bind" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="exCargas" target="colaCarga">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="bind" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="exCargas" target="colaNoti">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="entrega&#10;(prefetch 1, ack manual)" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="colaCarga" target="consumidorCM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="entrega&#10;(prefetch 1, ack manual)" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="colaNoti" target="consumidorN">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b5" value="nack sin requeue → dead-letter automático&#10;(x-dead-letter-exchange)" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#d79b00;fontColor=#d79b00;exitX=0.25;exitY=1;entryX=0.15;entryY=0;" edge="1" parent="1" source="colaCarga" target="exReintento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b6" value="nack sin requeue → dead-letter automático&#10;(x-dead-letter-exchange)" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#d79b00;fontColor=#d79b00;exitX=0.75;exitY=1;entryX=0.85;entryY=0;" edge="1" parent="1" source="colaNoti" target="exReintento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b7" value="bind" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="exReintento" target="colaCargaReintento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b8" value="bind" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="exReintento" target="colaNotiReintento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b9" value="TTL expira sin consumidor → dead-letter automático, vuelve a 'cargas' (mismo rk)" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#6c8ebf;fontColor=#6c8ebf;exitX=0.1;exitY=0;entryX=0.35;entryY=1;" edge="1" parent="1" source="colaCargaReintento" target="exCargas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b10" value="TTL expira sin consumidor → dead-letter automático, vuelve a 'cargas' (mismo rk)" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#6c8ebf;fontColor=#6c8ebf;exitX=0.9;exitY=0;entryX=0.65;entryY=1;" edge="1" parent="1" source="colaNotiReintento" target="exCargas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b11" value="x-death.count ≥ 3 → publica manual&#10;rk carga.masiva.muerto" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="consumidorCM" target="exCargas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b12" value="x-death.count ≥ 3 → publica manual&#10;rk carga.notificacion.muerto" style="endArrow=block;dashed=1;html=1;fontSize=9;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="consumidorN" target="exCargas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b13" value="bind" style="endArrow=block;dashed=1;html=1;fontSize=10;strokeColor=#b85450;" edge="1" parent="1" source="exCargas" target="colaCargaMuertos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b14" value="bind" style="endArrow=block;dashed=1;html=1;fontSize=10;strokeColor=#b85450;" edge="1" parent="1" source="exCargas" target="colaNotiMuertos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Anotaciones ===== -->
+        <mxCell id="noteTtl" value="reintentoSegundos es configurable (.env) y aplica a AMBAS colas por igual: un correo que falla (Mailpit caído) merece el mismo tope de reintentos que un archivo que falla — no debe girar para siempre ni perderse en silencio." style="text;html=1;align=left;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="580" width="620" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="notePregunta" value="Pregunta trampa: ¿qué pasa si un mensaje falla para siempre? Tras 3 intentos (contados vía x-death, sin estado propio ni plugin) va a la cola de muertos correspondiente y deja de girar — no se pierde, pero tampoco reintenta infinito. Replay manual de esa cola queda fuera de alcance del reto." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="660" y="580" width="650" height="55" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

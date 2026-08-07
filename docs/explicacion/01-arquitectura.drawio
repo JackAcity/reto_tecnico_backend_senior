@@ -63,6 +63,12 @@
         <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="gateway" target="control">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="e3b" value="/servicios/cargamasiva/* (diagnóstico)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#999999;fontColor=#999999;fontSize=9;exitX=0.75;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="cargamasiva">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3c" value="/servicios/notificaciones/* (diagnóstico)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#999999;fontColor=#999999;fontSize=9;exitX=1;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="notificaciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
 
         <!-- ===== Flechas: servicios -> infra síncronas ===== -->
         <mxCell id="e4" value="sube .xlsx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" parent="1" source="control" target="seaweedfs">

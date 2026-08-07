@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="flujo-feliz" id="flujo-feliz-reto">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1450" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="Camino feliz — periodo libre, todo sale bien" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="5" width="600" height="26" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Cabeceras de actores ===== -->
+        <mxCell id="a1" value="Cliente" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="Gateway" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="190" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="Control" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="340" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="SeaweedFS" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="490" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="RabbitMQ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="CargaMasiva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="790" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" value="Postgres" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="940" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a8" value="Notificaciones" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" value="Mailpit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Lifelines ===== -->
+        <mxCell id="l1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="105" y="80" as="sourcePoint" /><mxPoint x="105" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l2" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="255" y="80" as="sourcePoint" /><mxPoint x="255" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l3" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="80" as="sourcePoint" /><mxPoint x="405" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l4" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="555" y="80" as="sourcePoint" /><mxPoint x="555" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l5" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="705" y="80" as="sourcePoint" /><mxPoint x="705" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l6" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="80" as="sourcePoint" /><mxPoint x="855" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l7" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="80" as="sourcePoint" /><mxPoint x="1005" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l8" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1155" y="80" as="sourcePoint" /><mxPoint x="1155" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="l9" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1305" y="80" as="sourcePoint" /><mxPoint x="1305" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Mensajes ===== -->
+        <mxCell id="m1" value="1. POST /cargas (multipart, Bearer JWT)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="105" y="120" as="sourcePoint" /><mxPoint x="255" y="120" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="n1" value="valida JWT + policy carga:masiva" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="262" y="132" width="260" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="2. reenvía" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="255" y="170" as="sourcePoint" /><mxPoint x="405" y="170" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="n2" value="ValidarArchivo + firma binaria (PK\x03\x04, no solo extensión)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="412" y="182" width="300" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" value="3. sube .xlsx" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="215" as="sourcePoint" /><mxPoint x="555" y="215" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m4" value="4. INSERT carga_archivo (Pendiente)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="250" as="sourcePoint" /><mxPoint x="1005" y="250" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. publica MensajeCarga (rk carga.masiva)" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="285" as="sourcePoint" /><mxPoint x="705" y="285" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m6" value="201 { idCarga, estado: Pendiente }" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="320" as="sourcePoint" /><mxPoint x="105" y="320" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="m7" value="6. entrega (prefetch 1, ack manual)" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="705" y="360" as="sourcePoint" /><mxPoint x="855" y="360" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m8" value="7. UPDATE estado = EnProceso" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="395" as="sourcePoint" /><mxPoint x="1005" y="395" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m9" value="8. descarga .xlsx" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="430" as="sourcePoint" /><mxPoint x="555" y="430" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="n3" value="LectorExcel + NormalizadorFila (streaming, buffer en MemoryStream)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="862" y="442" width="340" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" value="9. sp_resolver_periodo(idCarga, periodo) — por c/periodo del archivo" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="475" as="sourcePoint" /><mxPoint x="1005" y="475" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m11" value="Libre (advisory lock + INSERT carga_periodo)" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="505" as="sourcePoint" /><mxPoint x="855" y="505" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="n4" value="dedup intra-lote — primera ocurrencia gana" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="862" y="517" width="300" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="m12" value="10. ObtenerExistentesAsync (¿ya en data_procesada?)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="550" as="sourcePoint" /><mxPoint x="1005" y="550" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m13" value="11. sp_insertar_data_procesada (unnest, ON CONFLICT DO NOTHING)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="585" as="sourcePoint" /><mxPoint x="1005" y="585" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m14" value="12. INSERT detalle_carga_error (rechazos + defaults aplicados)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="620" as="sourcePoint" /><mxPoint x="1005" y="620" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m15" value="13. UPDATE estado = Cargado → Finalizado" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="655" as="sourcePoint" /><mxPoint x="1005" y="655" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m16" value="14. publica MensajeNotificacion (rk carga.notificacion) + ack" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="855" y="690" as="sourcePoint" /><mxPoint x="705" y="690" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="m17" value="15. entrega (prefetch 1, ack manual)" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="705" y="725" as="sourcePoint" /><mxPoint x="1155" y="725" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m18" value="16. SELECT carga_archivo (resumen insertadas/rechazadas)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1155" y="758" as="sourcePoint" /><mxPoint x="1005" y="758" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m19" value="17. SMTP: correo con el resumen" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1155" y="791" as="sourcePoint" /><mxPoint x="1305" y="791" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m20" value="18. UPDATE estado = Notificado + ack" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1155" y="824" as="sourcePoint" /><mxPoint x="1005" y="824" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="m21" value="19. GET /cargas/{id} (polling)" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="105" y="860" as="sourcePoint" /><mxPoint x="255" y="860" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m22" value="reenvía" style="endArrow=block;html=1;fontSize=10;align=center;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="255" y="880" as="sourcePoint" /><mxPoint x="405" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m23" value="20. Notificado — filasInsertadas: 154, filasRechazadas: 46" style="endArrow=block;dashed=1;html=1;fontSize=10;align=center;verticalAlign=top;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="405" y="905" as="sourcePoint" /><mxPoint x="105" y="905" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Leyenda ===== -->
+        <mxCell id="ley1" value="—— línea sólida: llamada síncrona (HTTP/SQL/SMTP)     ┄┄ línea punteada: mensaje asíncrono (RabbitMQ) o respuesta   ·  texto en itálica: acción interna, sin llamada de red" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="925" width="1100" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

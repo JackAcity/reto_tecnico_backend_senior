@@ -1,0 +1,66 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="modelo-datos" id="modelo-datos-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1340" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="6 tablas, una sola base — propiedad de escritura explícita por tabla (design.md §C10)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="900" height="26" as="geometry" />
+        </mxCell>
+
+        <!-- ===== usuario ===== -->
+        <mxCell id="usuario" value="usuario  —  escribe: Auth&#10;──────────────&#10;PK  Id&#10;    Email (único)&#10;    PasswordHash&#10;    Rol&#10;    Activo (default true)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- ===== refresh_token ===== -->
+        <mxCell id="refresh" value="refresh_token  —  escribe: Auth&#10;──────────────&#10;PK  Id&#10;FK  UsuarioId → usuario&#10;    Token (único)&#10;    ExpiraEn&#10;    RevocadoEn (nullable)&#10;    ReemplazadoPor (nullable)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="240" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- ===== carga_archivo ===== -->
+        <mxCell id="carga" value="carga_archivo  —  escribe: Control (INSERT Pendiente) → CargaMasiva (UPDATE EnProceso…Finalizado) → Notificaciones (UPDATE Notificado)&#10;──────────────&#10;PK  Id&#10;    NombreArchivo&#10;    RutaArchivo (seaweed://…)&#10;    TamanoBytes&#10;    Usuario (email de quien subió)&#10;    FechaRegistro&#10;    Estado (8 valores, string)&#10;    FechaFin (nullable)&#10;    TotalFilas / FilasInsertadas / FilasRechazadas (default 0)&#10;    MensajeError (nullable)&#10;    CorrelationId" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="420" y="60" width="320" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- ===== carga_periodo ===== -->
+        <mxCell id="periodo" value="carga_periodo  —  escribe: CargaMasiva&#10;──────────────&#10;PK  Id&#10;FK  CargaArchivoId → carga_archivo&#10;    Periodo (yyyy-MM)&#10;    Estado (Aceptado / YaCargado / Bloqueado)&#10;    FilasInsertadas (default 0)&#10;&#10;ux_carga_periodo_activo:&#10;UNIQUE(Periodo) WHERE estado = 'Aceptado'&#10;— impide 2 cargas activas del mismo&#10;periodo a nivel motor (§C9, sin TOCTOU)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="40" width="300" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- ===== data_procesada ===== -->
+        <mxCell id="data" value="data_procesada  —  escribe: CargaMasiva&#10;──────────────&#10;PK  Id&#10;    Periodo&#10;    CodigoProducto&#10;    NombreProducto&#10;    Precio (decimal 18,2)&#10;FK  CargaArchivoId → carga_archivo&#10;    FechaRegistro&#10;&#10;ux_data_procesada_periodo_codigo:&#10;UNIQUE(Periodo, CodigoProducto)&#10;— clave de negocio (§C5) Y llave de&#10;idempotencia del consumidor (§C8)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="260" width="300" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- ===== detalle_carga_error ===== -->
+        <mxCell id="detalle" value="detalle_carga_error  —  escribe: CargaMasiva&#10;──────────────&#10;PK  Id&#10;FK  CargaArchivoId → carga_archivo&#10;    NumeroFila&#10;    Periodo (nullable)&#10;    CodigoProducto (nullable)&#10;    Columna (nullable)&#10;    Motivo (8 valores: PeriodoYaCargado,&#10;    PeriodoBloqueado, Existente,&#10;    ValorPorDefectoAplicado, PrecioInvalido,&#10;    PeriodoRequerido, PeriodoFormatoInvalido,&#10;    CodigoRequerido)&#10;    ValorCrudo (nullable)&#10;    FechaRegistro" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="470" width="300" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Relaciones ===== -->
+        <mxCell id="r1" value="1 — N" style="endArrow=diamondThin;startArrow=none;html=1;fontSize=10;" edge="1" parent="1" source="usuario" target="refresh">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="1 — N" style="endArrow=diamondThin;startArrow=none;html=1;fontSize=10;" edge="1" parent="1" source="carga" target="periodo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="1 — N" style="endArrow=diamondThin;startArrow=none;html=1;fontSize=10;" edge="1" parent="1" source="carga" target="data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="1 — N" style="endArrow=diamondThin;startArrow=none;html=1;fontSize=10;" edge="1" parent="1" source="carga" target="detalle">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Anotaciones ===== -->
+        <mxCell id="leyenda" value="azul = escribe Auth   ·   gris = multi-servicio (ver flecha de escritura en el título de la tabla)   ·   naranja = escribe CargaMasiva" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="620" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="trampa" value="Pregunta trampa (C10): '¿esto no debería ser database-per-service?' — El diagrama del enunciado prescribe UNA base. La separación real no es física (un contenedor de Postgres por servicio) sino disciplinaria: cada tabla tiene un único dueño de escritura, documentado acá y en db-schema.md. Dos tablas (p. ej. separar lectura/escritura de carga_archivo) violaría la consistencia que sp_resolver_periodo necesita en una sola transacción (§C15)." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="620" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

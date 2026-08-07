@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="seguridad-jwt" id="seguridad-jwt-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="Login → claims → validación en 2 capas → rotación de refresh" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="800" height="26" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Row 1: login ===== -->
+        <mxCell id="cliente" value="Cliente" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" value="Auth&#10;/auth/login" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="60" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dbLogin" value="Postgres&#10;usuario / refresh_token" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="60" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="noteTiming" value="LoginAsync SIEMPRE corre PasswordHasher.Verify, exista o no el usuario (UsuarioFicticio + HashFicticio) — sin esto, el tiempo de respuesta delataría qué emails existen aunque el 401 sea idéntico en body y status." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="45" width="380" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="POST /auth/login&#10;{ email, password }" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="cliente" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="SELECT usuario&#10;WHERE email AND Activo" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="auth" target="dbLogin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" style="endArrow=none;dashed=1;html=1;strokeColor=#d6b656;" edge="1" parent="1" source="auth" target="noteTiming">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4" value="INSERT refresh_token&#10;(revoca el anterior si era un refresh)" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="auth" target="dbLogin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" value="200 { accessToken, expiraEn, refreshToken }" style="endArrow=block;dashed=1;html=1;fontSize=10;" edge="1" parent="1" source="auth" target="cliente">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Row 2: contenido del token ===== -->
+        <mxCell id="tokenBox" value="AccessToken (JWT, HS256)&#10;──────────────&#10;sub = usuario.Id&#10;email = usuario.Email&#10;jti = Guid nuevo (uno por token emitido)&#10;role = usuario.Rol&#10;permiso = 'carga:masiva' — SOLO si Rol ∈ {administrador, operador} (PermisosDe)&#10;iss / aud / exp — validados en cada capa, ClockSkew 30s&#10;firma: HMACSHA256, Jwt:Key ≥ 32 chars (falla al EMITIR el primer token, no al arrancar — LlaveDeFirma corre dentro de CrearAccessToken)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="240" y="200" width="480" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Row 3: validación en 2 capas ===== -->
+        <mxCell id="gwBox" value="Gateway — 1ª validación&#10;JwtBearer: firma + issuer + audience + expiración&#10;policy 'autenticado' → toda ruta protegida&#10;policy 'cargaMasiva' → RequireClaim(permiso, carga:masiva) — solo POST /cargas" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="420" width="340" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrlBox" value="Control — 2ª validación (independiente)&#10;vuelve a validar el JWT completo — NO confía en un header reenviado&#10;la auditoría de 'quién subió' sale del claim del token, nunca de un header&#10;evita que un contenedor comprometido en la red interna falsee al usuario" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="420" width="340" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="m6" value="Bearer &lt;jwt&gt;" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="tokenBox" target="gwBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" value="reenvía Authorization original" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="gwBox" target="ctrlBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Row 4: rotación de refresh ===== -->
+        <mxCell id="tokenA" value="RefreshToken A&#10;activo" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="600" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tokenB" value="RefreshToken B&#10;activo (nuevo)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="600" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m8" value="POST /auth/refresh&#10;A.RevocadoEn = ahora&#10;A.ReemplazadoPor = B" style="endArrow=block;html=1;fontSize=10;" edge="1" parent="1" source="tokenA" target="tokenB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="noteReuse" value="Reuso de A (ya revocado) → 401, mismo mensaje que 'expirado'.&#10;ponytail: no revoca toda la cadena del usuario ante el reuso — solo A falla. Detección más agresiva (revocar todo) queda pendiente si el alcance crece." style="text;html=1;align=left;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="700" y="595" width="440" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="m9" value="reuso" style="endArrow=block;dashed=1;html=1;fontSize=10;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="tokenA" target="noteReuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Pregunta trampa ===== -->
+        <mxCell id="trampa" value="Pregunta trampa: ¿cómo escalarías un usuario 'consulta' a 'carga:masiva'? No podés — el claim 'permiso' se calcula SERVER-SIDE a partir del Rol en cada emisión (PermisosDe), nunca se lee del request ni queda editable por el cliente: modificarlo client-side rompe la firma HS256, y Jwt:Key nunca sale del servidor." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="710" width="1040" height="55" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,107 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="despliegue-docker" id="despliegue-docker-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="9 contenedores, un solo puerto público — non-root, loopback-only, volúmenes nombrados" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="900" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bgRect" value="Docker network (bridge, default) — todo dentro se resuelve por nombre de servicio (DNS interno de Compose)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="60" width="1260" height="330" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Infraestructura (imágenes de terceros) ===== -->
+        <mxCell id="postgres" value="postgres:17-alpine&#10;127.0.0.1:5432 → 5432&#10;volumen: pgdata (nombrado)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="200" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="rabbitmq" value="rabbitmq:4-management-alpine&#10;127.0.0.1:5672, :15672&#10;sin volumen nombrado" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="280" y="110" width="200" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="seaweedfs" value="chrislusf/seaweedfs&#10;127.0.0.1: 9333, 8888, 8333&#10;volumen: seaweeddata (nombrado)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="510" y="110" width="210" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="mailpit" value="axllent/mailpit&#10;127.0.0.1:1025 (SMTP), :8025 (UI)&#10;sin volumen — solo para la demo" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="200" height="95" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Microservicios propios ===== -->
+        <mxCell id="gateway" value="gateway (YARP)&#10;127.0.0.1:8080 → 8080&#10;único puerto público del sistema&#10;non-root: USER $APP_UID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="240" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" value="auth&#10;SIN puerto publicado&#10;solo alcanzable vía red interna&#10;non-root: USER $APP_UID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="280" y="240" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="control" value="control&#10;SIN puerto publicado&#10;dueño del esquema — único que migra (§C11)&#10;non-root: USER $APP_UID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="510" y="240" width="210" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cargamasiva" value="cargamasiva&#10;SIN puerto publicado&#10;el núcleo&#10;non-root: USER $APP_UID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="750" y="240" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="notificaciones" value="notificaciones&#10;SIN puerto publicado&#10;non-root: USER $APP_UID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="980" y="240" width="210" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Orden de arranque ===== -->
+        <mxCell id="ordenTitulo" value="Orden de arranque — depends_on: condition: service_healthy (§C11: solo Control migra el esquema)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="405" width="900" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pg2" value="postgres" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="20" y="440" width="110" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="rmq2" value="rabbitmq" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="150" y="440" width="110" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="sw2" value="seaweedfs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="280" y="440" width="110" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="mp2" value="mailpit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="410" y="490" width="110" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="control2" value="control&#10;(migra el esquema)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="580" y="440" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="auth2" value="auth" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="780" y="400" width="140" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="cm2" value="cargamasiva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="780" y="442" width="140" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="noti2" value="notificaciones" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="780" y="484" width="140" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway2" value="gateway&#10;(último — espera auth + control)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="990" y="440" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="pg2" target="control2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c2" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="rmq2" target="control2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c3" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="sw2" target="control2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c4" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="control2" target="auth2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c5" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="control2" target="cm2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c6" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="control2" target="noti2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c7" value="SMTP objetivo" style="endArrow=block;dashed=1;html=1;fontSize=8;" edge="1" parent="1" source="mp2" target="noti2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c8" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="auth2" target="gateway2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c9" style="endArrow=block;html=1;fontSize=9;" edge="1" parent="1" source="control2" target="gateway2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="noteSimplif" value="cargamasiva y notificaciones también esperan rabbitmq/seaweedfs sanos — omitido acá para no duplicar flechas ya mostradas contra control." style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=8;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="580" y="530" width="420" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Anotaciones ===== -->
+        <mxCell id="noteLoopback" value="127.0.0.1 y nunca 0.0.0.0: con las credenciales de ejemplo en .env, publicar en todas las interfaces expondría Postgres/RabbitMQ/SeaweedFS a cualquier máquina de la misma LAN del evaluador. gateway:8080 es el único puerto pensado para tráfico de negocio; el resto de puertos loopback (RabbitMQ mgmt, Mailpit UI) existen solo para que el evaluador los vea durante el video." style="text;html=1;align=left;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="580" width="610" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="trampa" value="Pregunta trampa: '¿y en producción, seguirías publicando rabbitmq/seaweedfs/postgres aunque sea en loopback?' No — en producción esos 3 quedarían SOLO en la red interna, igual que auth/control/cargamasiva/notificaciones. Acá se publican por conveniencia de demo/video, documentado como tal, no como el diseño recomendado para producción." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="650" y="580" width="630" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="noteVol" value="Persistencia real: solo pgdata y seaweeddata son volúmenes nombrados. 'docker compose down -v' los borra a propósito (§C16 — el riesgo real es volumen + backup, no el contenedor en sí; ver 05-modelo-datos.drawio y design.md)." style="text;html=1;align=left;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="700" width="1260" height="45" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="flujo-rechazo" id="flujo-rechazo-reto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1180" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="titulo" value="Un mismo punto de decisión, tres destinos — qué cambia cuando el periodo NO está libre" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="5" width="900" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pre" value="CargaMasiva ya descargó y parseó el archivo. Por cada periodo distinto encontrado en el Excel:" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="300" y="40" width="600" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="diamante" value="sp_resolver_periodo(idCarga, periodo)&#10;(advisory lock + transacción)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="450" y="70" width="280" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Columna Libre (feliz) ===== -->
+        <mxCell id="colLibreH" value="Libre" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="220" width="240" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="libre1" value="INSERT carga_periodo (reservado para esta carga)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="270" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="libre2" value="Procesa las filas del periodo:&#10;sp_insertar_data_procesada + auditoría de errores/defaults" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="340" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="libre3" value="carga_periodo.Estado queda en 'Aceptado' (no existe estado 'Cargado' — solo FilasInsertadas se completa)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="420" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Columna Bloqueado ===== -->
+        <mxCell id="colBloqH" value="Bloqueado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="220" width="240" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="bloq1" value="otra carga_archivo tiene este periodo activo ahora mismo (Pendiente o EnProceso)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="270" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="bloq2" value="periodo NO se procesa en esta carga&#10;INSERT detalle_carga_error — motivo PeriodoBloqueado" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="340" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bloq3" value="reintentable SOLO si la otra carga termina mal (Fallida/Rechazada/Bloqueada → libera). Si termina bien, este periodo pasa a YaCargado — definitivo, no se libera." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="420" width="240" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Columna YaCargado ===== -->
+        <mxCell id="colYaH" value="YaCargado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="220" width="240" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="ya1" value="otra carga_archivo (id distinto) ya dejó este periodo Finalizado" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="880" y="270" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ya2" value="periodo NO se procesa en esta carga&#10;INSERT detalle_carga_error — motivo PeriodoYaCargado" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="880" y="340" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ya3" value="definitivo — el dato ya existe, reintentar no cambia nada" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="880" y="420" width="240" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Flechas desde el diamante ===== -->
+        <mxCell id="eL" value="Libre" style="endArrow=block;html=1;fontSize=11;fontStyle=1;strokeColor=#82b366;" edge="1" parent="1" source="diamante" target="colLibreH">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB" value="Bloqueado" style="endArrow=block;html=1;fontSize=11;fontStyle=1;strokeColor=#d79b00;" edge="1" parent="1" source="diamante" target="colBloqH">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eY" value="YaCargado" style="endArrow=block;html=1;fontSize=11;fontStyle=1;strokeColor=#b85450;" edge="1" parent="1" source="diamante" target="colYaH">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ePre" style="endArrow=block;html=1;" edge="1" parent="1" source="pre" target="diamante">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Agregación a nivel de carga completa ===== -->
+        <mxCell id="aggTitulo" value="Regla de agregación — es POR CARGA (no por periodo). Se evalúa después de resolver TODOS los periodos del archivo:" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="140" y="500" width="900" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d1" value="¿Al menos un periodo&#10;resultó Libre?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="540" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="finBox" value="Finalizado&#10;(con lo insertado — parcial está bien,&#10;&quot;hubo trabajo útil&quot;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="540" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dsi1" value="Sí" style="endArrow=block;html=1;fontSize=10;fontStyle=1;strokeColor=#82b366;" edge="1" parent="1" source="d1" target="finBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d2" value="No — ¿al menos un periodo&#10;resultó Bloqueado?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="650" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dno1" style="endArrow=block;html=1;fontSize=10;fontStyle=1;strokeColor=#999999;" edge="1" parent="1" source="d1" target="d2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bloqBox" value="Bloqueada&#10;(gana sobre Rechazada si hay mezcla —&#10;lectura más accionable)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="655" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dsi2" value="Sí" style="endArrow=block;html=1;fontSize=10;fontStyle=1;strokeColor=#d79b00;" edge="1" parent="1" source="d2" target="bloqBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rechBox" value="Rechazada&#10;(no — todos los periodos eran YaCargado)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="780" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dno2" value="No" style="endArrow=block;html=1;fontSize=10;fontStyle=1;strokeColor=#b85450;" edge="1" parent="1" source="d2" target="rechBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="notaFin" value="→ publica MensajeNotificacion → Notificado (correo)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=10;fontStyle=2;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="740" y="618" width="320" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="notaNo" value="Bloqueada Y Rechazada → NO publica en 'notificaciones', sin correo (mismo return temprano en ManejadorCarga; enunciado solo define Finalizado → Notificado)" style="text;html=1;align=left;fillColor=none;strokeColor=none;fontSize=10;fontStyle=2;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="440" y="850" width="660" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="trampa" value="Pregunta trampa: archivo con 3 periodos, 2 YaCargado + 1 Bloqueado → el enunciado NO lo especifica. Se resolvió a favor de Bloqueada (documentado en specs/maquina-estados.md, misma disciplina que C1-C17)." style="text;html=1;align=left;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="890" width="1060" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

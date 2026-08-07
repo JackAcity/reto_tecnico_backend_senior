@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using RabbitMQ.Client;
 
 namespace Mensajeria;
@@ -127,4 +130,23 @@ public static class Topologia
 /// </summary>
 public sealed record MensajeCarga(int IdCarga, string RutaArchivo, string Usuario);
 
-public sealed record MensajeNotificacion(int IdCarga, string Usuario, DateTimeOffset FechaFin);
+public sealed record MensajeNotificacion(
+    int IdCarga, string Usuario,
+    [property: JsonConverter(typeof(FechaFinJsonConverter))] DateTimeOffset FechaFin);
+
+/// <summary>
+/// El ejemplo del enunciado (§3️⃣) es literal: <c>"2025-02-10T10:20:00"</c> — sin
+/// offset ni decimales. El converter por defecto de DateTimeOffset sí los agrega
+/// (formato "round-trip"); sin este converter, el campo tiene el nombre correcto
+/// pero no el formato exacto que matriz-requisitos.md marca como obligatorio (§3.3g).
+/// </summary>
+internal sealed class FechaFinJsonConverter : JsonConverter<DateTimeOffset>
+{
+    private const string Formato = "yyyy-MM-ddTHH:mm:ss";
+
+    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        DateTimeOffset.Parse(reader.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.UtcDateTime.ToString(Formato, CultureInfo.InvariantCulture));
+}

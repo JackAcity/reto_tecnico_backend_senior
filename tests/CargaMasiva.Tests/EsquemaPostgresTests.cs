@@ -14,7 +14,15 @@ namespace CargaMasiva.Tests;
 /// </summary>
 public sealed class EsquemaPostgresTests : IAsyncLifetime
 {
-    private const string Periodo = "2099-01";   // fuera del rango de cualquier dato real
+    // Un literal fijo ("2099-01") choca con cualquier fixture que use el mismo
+    // periodo y ya haya corrido de verdad contra esta base (no en una transacción
+    // que se revierte): samples/fixture-sucio.xlsx usa exactamente ese rango, y
+    // una vez subido de verdad deja "2099-01" permanentemente Aceptado — el SP ve
+    // ese dato committeado desde fuera de esta transacción y devuelve YaCargado en
+    // vez de Libre. Un año aleatorio en un rango que ningún fixture real usa
+    // (2200-2699) es único por corrida y no depende de acordarse de resetear la base.
+    private static readonly string Periodo = $"{Random.Shared.Next(2200, 2700)}-{Random.Shared.Next(1, 13):D2}";
+    private static readonly string Periodo2 = $"{Random.Shared.Next(2200, 2700)}-{Random.Shared.Next(1, 13):D2}";
 
     private static string Cadena =>
         Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
@@ -59,11 +67,11 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
     /// para interpretar el veredicto, así que se valida acá con <c>Enum.Parse</c>
     /// en vez de comparar el string crudo.
     /// </summary>
-    private async Task<ResultadoPeriodo> ResolverPeriodoAsync(int idCarga, string periodo = Periodo)
+    private async Task<ResultadoPeriodo> ResolverPeriodoAsync(int idCarga, string? periodo = null)
     {
         await using var cmd = new NpgsqlCommand("SELECT sp_resolver_periodo(@id, @periodo::varchar);", _cn, _tx);
         cmd.Parameters.AddWithValue("id", idCarga);
-        cmd.Parameters.AddWithValue("periodo", periodo);
+        cmd.Parameters.AddWithValue("periodo", periodo ?? Periodo);
         var texto = (string)(await cmd.ExecuteScalarAsync())!;
         return Enum.Parse<ResultadoPeriodo>(texto);
     }
@@ -149,7 +157,7 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
         var carga = await NuevaCargaAsync(EstadoCarga.EnProceso);
 
         var insertadas = await InsertarLoteAsync(carga,
-            periodos: [Periodo, "2099-02", Periodo],
+            periodos: [Periodo, Periodo2, Periodo],
             codigos:  ["P0001", "P0001",   "P0001"],
             nombres:  ["Uno",   "Dos",     "Duplicado"],
             precios:  [10.50m,  20.00m,    99.99m]);

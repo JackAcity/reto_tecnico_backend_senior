@@ -1,0 +1,321 @@
+<title>Arquitectura — carga masiva</title>
+<style>
+  :root {
+    --bg: #f5f6f7;
+    --surface: #ffffff;
+    --surface-2: #eef0f2;
+    --border: #d7dbe0;
+    --text: #1b1f27;
+    --text-muted: #5c6572;
+    --client: #7d8798;
+    --service: #3b6fb0;
+    --service-bg: #e8eefa;
+    --core: #b5730f;
+    --core-bg: #faecd6;
+    --infra: #3f8a54;
+    --infra-bg: #e5f2e8;
+    --line: #5c6572;
+    --line-muted: #9099a6;
+    --font-ui: ui-sans-serif, "Segoe UI", "Helvetica Neue", system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171c;
+      --surface: #1a1e25;
+      --surface-2: #20252d;
+      --border: #2c323c;
+      --text: #e7ebf0;
+      --text-muted: #9aa4b2;
+      --client: #9aa4b2;
+      --service: #7fabe8;
+      --service-bg: #1c2634;
+      --core: #e3a24a;
+      --core-bg: #322613;
+      --infra: #7dc38c;
+      --infra-bg: #1a2a1e;
+      --line: #aab3c0;
+      --line-muted: #5a6270;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --surface: #1a1e25;
+    --surface-2: #20252d;
+    --border: #2c323c;
+    --text: #e7ebf0;
+    --text-muted: #9aa4b2;
+    --client: #9aa4b2;
+    --service: #7fabe8;
+    --service-bg: #1c2634;
+    --core: #e3a24a;
+    --core-bg: #322613;
+    --infra: #7dc38c;
+    --infra-bg: #1a2a1e;
+    --line: #aab3c0;
+    --line-muted: #5a6270;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    line-height: 1.5;
+  }
+  main {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  h1 {
+    margin: 4px 0 0;
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 650;
+    text-wrap: balance;
+  }
+  .dek {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+  figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .diagram-frame {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 72ch;
+  }
+  .node-title { font-family: var(--font-ui); font-weight: 650; }
+  .node-sub { font-family: var(--font-mono); }
+  .edge-label { font-family: var(--font-mono); }
+
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .legend h2 {
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 650;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex: none;
+    border: 1px solid var(--border);
+  }
+  .line-sample {
+    width: 28px;
+    height: 0;
+    border-top: 2px solid var(--line);
+    flex: none;
+  }
+  .line-sample.dashed { border-top-style: dashed; border-top-color: var(--line-muted); }
+
+  .note {
+    font-size: 13px;
+    color: var(--text-muted);
+    border-left: 3px solid var(--border);
+    padding-left: 14px;
+    max-width: 72ch;
+  }
+  .note code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--text);
+  }
+</style>
+
+<main>
+  <div>
+    <div class="eyebrow">docs/explicacion · 01-arquitectura</div>
+    <h1>Cinco servicios, un punto público, una base compartida</h1>
+    <p class="dek">Diagrama de arquitectura del sistema. Abrí este archivo directo en el navegador para compartir pantalla en el video o en la entrevista — no depende de tener draw.io instalado.</p>
+  </div>
+
+  <figure>
+    <div class="diagram-frame">
+      <svg viewBox="0 0 1100 620" role="img" aria-label="Diagrama de arquitectura: el cliente llama al Gateway, único punto público; el Gateway enruta a Auth, Control, y por rutas de diagnóstico a CargaMasiva y Notificaciones; Control escribe en SeaweedFS, Postgres y publica en RabbitMQ; CargaMasiva consume de RabbitMQ, lee de SeaweedFS y Postgres, y publica notificaciones; Notificaciones consume de RabbitMQ, envía correo por Mailpit y marca Postgres.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+          </marker>
+          <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--line-muted)" />
+          </marker>
+        </defs>
+
+        <!-- ================= EDGES (drawn first, under the boxes) ================= -->
+        <g fill="none" stroke="var(--line)" stroke-width="1.6" color="var(--line)">
+          <!-- cliente -> gateway -->
+          <path d="M550,80 L550,130" marker-end="url(#arrow)" />
+          <!-- gateway -> auth -->
+          <path d="M478,184 L478,198 L145,198 L145,260" marker-end="url(#arrow)" />
+          <!-- gateway -> control -->
+          <path d="M515,184 L515,214 L415,214 L415,260" marker-end="url(#arrow)" />
+          <!-- auth -> postgres -->
+          <path d="M145,314 L145,454" marker-end="url(#arrow)" />
+          <!-- control -> postgres -->
+          <path d="M365,314 L365,336 L105,336 L105,454" marker-end="url(#arrow)" />
+          <!-- control -> rabbitmq -->
+          <path d="M415,314 L415,454" marker-end="url(#arrow)" />
+          <!-- control -> seaweedfs -->
+          <path d="M465,314 L465,353 L635,353 L635,454" marker-end="url(#arrow)" />
+          <!-- cargamasiva -> seaweedfs -->
+          <path d="M685,314 L685,454" marker-end="url(#arrow)" />
+          <!-- cargamasiva -> postgres (SPs) -->
+          <path d="M735,314 L735,404 L185,404 L185,454" marker-end="url(#arrow)" />
+          <!-- notificaciones -> mailpit -->
+          <path d="M955,314 L955,454" marker-end="url(#arrow)" />
+        </g>
+
+        <g fill="none" stroke="var(--line-muted)" stroke-width="1.6" stroke-dasharray="5 4" color="var(--line-muted)">
+          <!-- gateway -> cargamasiva (diagnóstico) -->
+          <path d="M585,184 L585,230 L685,230 L685,260" marker-end="url(#arrow-muted)" />
+          <!-- gateway -> notificaciones (diagnóstico) -->
+          <path d="M622,184 L622,246 L955,246 L955,260" marker-end="url(#arrow-muted)" />
+          <!-- rabbitmq -> cargamasiva (consume) -->
+          <path d="M375,454 L375,370 L635,370 L635,314" marker-end="url(#arrow-muted)" />
+          <!-- cargamasiva -> rabbitmq (publica notif) -->
+          <path d="M665,314 L665,387 L455,387 L455,454" marker-end="url(#arrow-muted)" />
+          <!-- rabbitmq -> notificaciones (consume) -->
+          <path d="M485,454 L485,421 L935,421 L935,314" marker-end="url(#arrow-muted)" />
+          <!-- notificaciones -> postgres -->
+          <path d="M1005,314 L1005,438 L215,438 L215,454" marker-end="url(#arrow)" />
+        </g>
+
+        <!-- ================= EDGE LABELS ================= -->
+        <g class="edge-label" font-size="10" fill="var(--text-muted)">
+          <text x="562" y="108" text-anchor="start">HTTPS + Bearer JWT</text>
+          <text x="635" y="223" text-anchor="middle" fill="var(--line-muted)">diagnóstico</text>
+          <text x="790" y="239" text-anchor="middle" fill="var(--line-muted)">diagnóstico</text>
+          <text x="155" y="381" text-anchor="start">consulta</text>
+          <text x="260" y="329" text-anchor="middle">inserta</text>
+          <text x="425" y="381" text-anchor="start">publica</text>
+          <text x="550" y="346" text-anchor="middle">sube archivo</text>
+          <text x="695" y="381" text-anchor="start">descarga</text>
+          <text x="450" y="397" text-anchor="middle">sp_resolver_periodo · sp_insertar_data_procesada</text>
+          <text x="500" y="363" text-anchor="middle" fill="var(--line-muted)">consume</text>
+          <text x="555" y="380" text-anchor="middle" fill="var(--line-muted)">publica</text>
+          <text x="700" y="414" text-anchor="middle" fill="var(--line-muted)">consume</text>
+          <text x="965" y="381" text-anchor="start">SMTP</text>
+          <text x="610" y="431" text-anchor="middle">marca Notificado</text>
+        </g>
+
+        <!-- ================= NODES ================= -->
+        <!-- Cliente -->
+        <g>
+          <rect x="460" y="30" width="180" height="50" rx="6" fill="var(--surface-2)" stroke="var(--client)" stroke-width="1.5" />
+          <text x="550" y="60" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Cliente / Postman</text>
+        </g>
+
+        <!-- Gateway -->
+        <g>
+          <rect x="460" y="130" width="180" height="54" rx="6" fill="var(--service-bg)" stroke="var(--service)" stroke-width="1.5" />
+          <text x="550" y="153" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Gateway (YARP)</text>
+          <text x="550" y="169" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">:8080 · único punto público</text>
+        </g>
+
+        <!-- Servicios -->
+        <g>
+          <rect x="65" y="260" width="160" height="54" rx="6" fill="var(--service-bg)" stroke="var(--service)" stroke-width="1.5" />
+          <text x="145" y="283" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Auth</text>
+          <text x="145" y="299" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">/auth/login · /refresh</text>
+        </g>
+        <g>
+          <rect x="335" y="260" width="160" height="54" rx="6" fill="var(--service-bg)" stroke="var(--service)" stroke-width="1.5" />
+          <text x="415" y="283" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Control</text>
+          <text x="415" y="299" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">POST /cargas</text>
+        </g>
+        <g>
+          <rect x="605" y="260" width="160" height="54" rx="6" fill="var(--core-bg)" stroke="var(--core)" stroke-width="1.5" />
+          <text x="685" y="283" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">CargaMasiva</text>
+          <text x="685" y="299" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">el núcleo</text>
+        </g>
+        <g>
+          <rect x="875" y="260" width="160" height="54" rx="6" fill="var(--service-bg)" stroke="var(--service)" stroke-width="1.5" />
+          <text x="955" y="283" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Notificaciones</text>
+          <text x="955" y="299" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">consumidor</text>
+        </g>
+
+        <!-- Infraestructura -->
+        <g>
+          <rect x="65" y="454" width="160" height="54" rx="6" fill="var(--infra-bg)" stroke="var(--infra)" stroke-width="1.5" />
+          <text x="145" y="477" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">PostgreSQL</text>
+          <text x="145" y="493" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">1 base compartida</text>
+        </g>
+        <g>
+          <rect x="335" y="454" width="160" height="54" rx="6" fill="var(--infra-bg)" stroke="var(--infra)" stroke-width="1.5" />
+          <text x="415" y="477" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">RabbitMQ</text>
+          <text x="415" y="493" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">exchange 'cargas'</text>
+        </g>
+        <g>
+          <rect x="605" y="454" width="160" height="54" rx="6" fill="var(--infra-bg)" stroke="var(--infra)" stroke-width="1.5" />
+          <text x="685" y="477" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">SeaweedFS</text>
+          <text x="685" y="493" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">filer HTTP</text>
+        </g>
+        <g>
+          <rect x="875" y="454" width="160" height="54" rx="6" fill="var(--infra-bg)" stroke="var(--infra)" stroke-width="1.5" />
+          <text x="955" y="477" text-anchor="middle" class="node-title" font-size="13" fill="var(--text)">Mailpit</text>
+          <text x="955" y="493" text-anchor="middle" class="node-sub" font-size="10" fill="var(--text-muted)">SMTP demo</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>El Gateway es la única puerta pública (8080); todo lo demás vive solo en la red interna. Línea sólida = HTTP/SQL síncrono. Línea punteada = mensaje async por RabbitMQ, o ruta de diagnóstico del Gateway.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <h2>Cómo leerlo</h2>
+    <div class="legend-row"><span class="swatch" style="background:var(--surface-2); border-color:var(--client)"></span>Cliente</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--service-bg); border-color:var(--service)"></span>Microservicio</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--core-bg); border-color:var(--core)"></span>CargaMasiva (el núcleo)</div>
+    <div class="legend-row"><span class="swatch" style="background:var(--infra-bg); border-color:var(--infra)"></span>Infraestructura</div>
+    <div class="legend-row"><span class="line-sample"></span>HTTP / SQL síncrono</div>
+    <div class="legend-row"><span class="line-sample dashed"></span>RabbitMQ async / diagnóstico</div>
+  </div>
+
+  <p class="note">El detalle de <code>sp_resolver_periodo</code>, las routing keys exactas y el orden paso a paso están en <code>02-flujo-feliz.drawio</code> y <code>06-mensajeria.drawio</code> — acá solo va lo mínimo para ubicar cada pieza.</p>
+</main>

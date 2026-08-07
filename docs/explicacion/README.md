@@ -11,7 +11,7 @@ para esa conversación, no para explicar "qué hace el código".
 
 | # | Diagrama | Responde | Si te preguntan... |
 |---|---|---|---|
-| 1 | [`01-arquitectura.drawio`](01-arquitectura.drawio) | ¿Qué componentes hay y cómo se hablan? | "Dibujame la arquitectura" — punto de partida de casi cualquier entrevista |
+| 1 | [`01-arquitectura.html`](01-arquitectura.html) | ¿Qué componentes hay y cómo se hablan? | "Dibujame la arquitectura" — punto de partida de casi cualquier entrevista |
 | 2 | [`00-mapa-de-caminos.md`](00-mapa-de-caminos.md) | Lista completa de ~35 escenarios, con dónde está probado cada uno | "¿Qué pasa si...?" — la pregunta trampa más común, ya la tenés tabulada |
 | 3 | [`02-flujo-feliz.drawio`](02-flujo-feliz.drawio) | Secuencia completa, request → correo, con SPs y colas exactas | "Caminá conmigo un request de punta a punta" |
 | 4 | [`03-flujo-rechazo.drawio`](03-flujo-rechazo.drawio) | Qué cambia (y qué NO) cuando el mismo periodo se sube dos veces | "¿Y si subo el mismo archivo dos veces?" — la comparación, no una lista separada |
@@ -22,8 +22,9 @@ para esa conversación, no para explicar "qué hace el código".
 | 9 | [`08-despliegue-docker.drawio`](08-despliegue-docker.drawio) | Qué puerto es público, qué es solo red interna, non-root, volúmenes | "¿Cómo lo asegurarías en producción?" |
 
 `01`, `02`, `03` ya tenían versión Mermaid (`.md` con el mismo número) —
-quedan como respaldo de texto; los `.drawio` son la versión para pantalla
-compartida o pizarra.
+quedan como respaldo de texto. `02`–`08` son `.drawio` (pantalla compartida
+o pizarra vía la app draw.io). `01` es HTML autocontenido — abre directo en
+cualquier navegador, sin instalar nada, mismo uso para pantalla compartida.
 
 ## Las 17 decisiones documentadas (C1–C17)
 

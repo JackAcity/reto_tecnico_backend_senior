@@ -16,6 +16,8 @@ public sealed record DetalleCarga(
     ResumenCarga Carga, string? RutaArchivo, string? MensajeError, string CorrelationId,
     IReadOnlyList<PeriodoCarga> Periodos, IReadOnlyList<ErrorAuditado> Errores, int TotalErrores);
 
+public sealed record ArchivoDeCarga(string NombreArchivo, string RutaArchivo);
+
 /// <summary>
 /// El lado de lectura del §5️⃣: historial y detalle. Separado de <see cref="ServicioCargas"/>
 /// (CQRS-lite, design.md §3) — nunca escribe, así que no necesita <c>IAlmacenArchivos</c>
@@ -64,4 +66,12 @@ public sealed class ConsultaCargas(RetoDbContext db)
             errores,
             totalErrores);
     }
+
+    /// <summary>§2.1e — "consultar el contenido del archivo excel subido": solo lo mínimo para poder descargarlo desde SeaweedFS.</summary>
+    public async Task<ArchivoDeCarga?> ArchivoAsync(int idCarga, CancellationToken ct = default) =>
+        await db.CargaArchivos
+            .AsNoTracking()
+            .Where(c => c.Id == idCarga && c.RutaArchivo != null)
+            .Select(c => new ArchivoDeCarga(c.NombreArchivo, c.RutaArchivo!))
+            .SingleOrDefaultAsync(ct);
 }

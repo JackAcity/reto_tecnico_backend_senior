@@ -1,0 +1,265 @@
+{
+  "info": {
+    "name": "Reto — Carga Masiva Distribuida",
+    "description": "Colección completa (§2.1a, §7.5 del enunciado). Requiere el stack levantado: `docker compose up -d`. Importar junto con el environment `reto-local.postman_environment.json` y seleccionarlo antes de correr.\n\nOrden sugerido para la demo: Auth → Login (admin) → Cargas → Subir archivo → Ver historial → Ver detalle → Ver contenido. Auth → Login (consulta) → Cargas → Subir archivo (con consulta) para ver el 403 de la policy `carga:masiva`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin — carga:masiva)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{seedEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "§2.3a/§2.3c. Guarda accessToken/refreshToken en el environment — el resto de la colección hereda el Bearer del nivel colección."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('200 con accessToken', () => { pm.response.to.have.status(200); pm.expect(body.accessToken).to.be.a('string'); });",
+                  "pm.environment.set('accessToken', body.accessToken);",
+                  "pm.environment.set('refreshToken', body.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (consulta — sin carga:masiva)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{seedConsultaEmail}}\",\n  \"password\": \"{{seedConsultaPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "Rol sin el claim carga:masiva (PermisosDe). Sirve para demostrar el 403 en 'Subir archivo (403 esperado)'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('200 con accessToken', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('accessTokenConsulta', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — credenciales inválidas (401 esperado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{seedEmail}}\",\n  \"password\": \"contraseña-incorrecta\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] } }
+          ]
+        },
+        {
+          "name": "Refresh (rota el token)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "description": "§2.3d. El refreshToken usado queda revocado — correr esto dos veces seguidas da 401 la segunda vez, a propósito (rotación)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.environment.set('accessToken', body.accessToken);",
+                  "  pm.environment.set('refreshToken', body.refreshToken);",
+                  "}",
+                  "pm.test('200 (o 401 si ya se usó este refreshToken)', () => pm.expect([200, 401]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cargas",
+      "item": [
+        {
+          "name": "Subir archivo (.xlsx real)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "archivo", "type": "file", "src": [], "description": "Seleccionar samples/carga_masiva_productos.xlsx del repo." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/cargas", "host": ["{{baseUrl}}"], "path": ["cargas"] },
+            "description": "§2.4/§3️⃣. Requiere el token de 'Login (admin)'. Guarda idCarga para las siguientes requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created, estado Pendiente', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().estado).to.eql('Pendiente');",
+                  "});",
+                  "pm.environment.set('idCarga', pm.response.json().idCarga);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subir archivo — extensión inválida (400 esperado)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "archivo", "type": "file", "src": [], "description": "Cualquier archivo que NO termine en .xlsx (ej. renombrar el mismo .xlsx a .csv)." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/cargas", "host": ["{{baseUrl}}"], "path": ["cargas"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] } }
+          ]
+        },
+        {
+          "name": "Subir archivo — sin permiso (403 esperado)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessTokenConsulta}}", "type": "string" }] },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "archivo", "type": "file", "src": [], "description": "samples/carga_masiva_productos.xlsx — el rechazo es por permiso, no por el archivo." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/cargas", "host": ["{{baseUrl}}"], "path": ["cargas"] },
+            "description": "§3.2a. Usa accessTokenConsulta ('Login (consulta)') — autenticado pero sin el claim carga:masiva."
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] } }
+          ]
+        },
+        {
+          "name": "Historial",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cargas?limite=50",
+              "host": ["{{baseUrl}}"], "path": ["cargas"],
+              "query": [{ "key": "limite", "value": "50" }]
+            },
+            "description": "§2.1d/§5️⃣. Polling: correr varias veces para ver el estado avanzar (Pendiente → EnProceso → Finalizado → Notificado)."
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }
+          ]
+        },
+        {
+          "name": "Detalle (estado, periodos, errores auditados)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/cargas/{{idCarga}}", "host": ["{{baseUrl}}"], "path": ["cargas", "{{idCarga}}"] },
+            "description": "§2.1f/§3.3c. Usa el idCarga guardado por 'Subir archivo'."
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }
+          ]
+        },
+        {
+          "name": "Detalle — carga inexistente (404 esperado)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/cargas/999999", "host": ["{{baseUrl}}"], "path": ["cargas", "999999"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('404', () => pm.response.to.have.status(404));"] } }
+          ]
+        },
+        {
+          "name": "Contenido del archivo subido",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/cargas/{{idCarga}}/contenido", "host": ["{{baseUrl}}"], "path": ["cargas", "{{idCarga}}", "contenido"] },
+            "description": "§2.1e — 'consultar el contenido del archivo excel subido'. Devuelve el .xlsx original, reproxeado desde SeaweedFS."
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200, xlsx', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml'); });"] } }
+          ]
+        },
+        {
+          "name": "Cargas sin token (401 esperado)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/cargas", "host": ["{{baseUrl}}"], "path": ["cargas"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Diagnóstico",
+      "item": [
+        {
+          "name": "Gateway /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "CargaMasiva /health (vía gateway, requiere token)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/servicios/cargamasiva/health", "host": ["{{baseUrl}}"], "path": ["servicios", "cargamasiva", "health"] }
+          }
+        },
+        {
+          "name": "Notificaciones /health (vía gateway, requiere token)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/servicios/notificaciones/health", "host": ["{{baseUrl}}"], "path": ["servicios", "notificaciones", "health"] }
+          }
+        }
+      ]
+    }
+  ]
+}

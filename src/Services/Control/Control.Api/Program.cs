@@ -80,4 +80,18 @@ app.MapGet("/cargas/{id:int}", async (int id, ConsultaCargas consulta, Cancellat
             : Results.NotFound(new { title = "Carga no encontrada", idCarga = id }))
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
+// §2.1e — "consultar el contenido del archivo excel subido": reproxea el .xlsx
+// original desde SeaweedFS. Control ya es quien habla con el filer; el cliente
+// nunca necesita conocer la ruta seaweed:// directamente.
+app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenArchivos almacen, CancellationToken ct) =>
+{
+    var archivo = await consulta.ArchivoAsync(id, ct);
+    if (archivo is null)
+        return Results.NotFound(new { title = "Carga no encontrada o sin archivo asociado", idCarga = id });
+
+    var contenido = await almacen.DescargarAsync(archivo.RutaArchivo, ct);
+    return Results.File(contenido, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", archivo.NombreArchivo);
+})
+    .RequireAuthorization(Autenticacion.PoliticaAutenticado);
+
 app.Run();

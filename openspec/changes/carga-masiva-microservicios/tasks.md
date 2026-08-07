@@ -100,11 +100,19 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 8 — Entregables (h 15–17)
 
-- [ ] 8.1 Colección Postman de todos los endpoints, con variable de entorno para el JWT
+- [x] 8.1 Colección Postman de todos los endpoints (`postman/`), con environment para el JWT
+      — corrida real vía `newman` contra el stack en vivo: 15/15 requests, 12/12 asserts ✅ 06-ago
 - [ ] 8.2 `README.md` propio: arquitectura, decisiones, cómo levantar, trade-offs
 - [ ] 8.3 Matriz de trazabilidad: cada requisito "obligatorio" → dónde está implementado
-- [ ] 8.4 `scripts/sql/` con esquema y procedimientos
-- [ ] 8.5 Fixtures sucios (`samples/`) demostrando defaults y filas vacías
+      (`matriz-requisitos.md` ya existe desde la planificación — falta pasarla a README y
+      verificar que sigue reflejando lo construido, no lo planeado)
+- [x] 8.4 `scripts/sql/` con esquema y procedimientos — verificado vigente, sin migraciones
+      nuevas desde Bloque 2
+- [x] 8.5 Fixtures sucios (`samples/fixture-sucio.xlsx`) demostrando defaults y filas vacías
+      — subida real verificada: 10 filas contadas (2 vacías descartadas sin auditar), 5
+      insertadas, 5 rechazadas, los 8 motivos exactos (`PrecioInvalido`, `PeriodoRequerido`,
+      `PeriodoFormatoInvalido`, `CodigoRequerido`, `Existente` ×1, `ValorPorDefectoAplicado` ×3)
+      coincidiendo con lo calculado antes de correrlo ✅ 07-ago 00:48
 
 ## Bloque 9 — Video (h 17–18)
 

@@ -143,6 +143,30 @@ public sealed class CargasTests(GatewayFixture fixture)
         Assert.Equal("admin@reto.local", json.RootElement.GetProperty("carga").GetProperty("usuario").GetString());
     }
 
+    /// <summary>§2.1e — "consultar el contenido del archivo excel subido". Round-trip byte a byte contra SeaweedFS real.</summary>
+    [Fact]
+    public async Task Contenido_DevuelveElArchivoOriginalCompleto()
+    {
+        var subida = await fixture.Cliente.SendAsync(Subida(RutaMuestra, "carga_masiva_productos.xlsx"));
+        subida.EnsureSuccessStatusCode();
+        using var creada = JsonDocument.Parse(await subida.Content.ReadAsStringAsync());
+        var idCarga = creada.RootElement.GetProperty("idCarga").GetInt32();
+
+        var respuesta = await fixture.Cliente.SendAsync(Get($"/cargas/{idCarga}/contenido"));
+        respuesta.EnsureSuccessStatusCode();
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", respuesta.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(File.ReadAllBytes(RutaMuestra), await respuesta.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Contenido_DeUnaCargaInexistente_Da404()
+    {
+        var respuesta = await fixture.Cliente.SendAsync(Get("/cargas/999999/contenido"));
+
+        Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
+    }
+
     [Fact]
     public async Task Subir_ConExtensionInvalida_Da400()
     {

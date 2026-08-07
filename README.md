@@ -92,6 +92,12 @@ Cada servicio de negocio sigue Domain → Application → Infrastructure → Api
 Architecture, Uncle Bob): el dominio no sabe que Postgres, RabbitMQ o SeaweedFS
 existen — son detalles detrás de interfaces que Application define.
 
+**Set completo de diagramas** (`.drawio`, editable en draw.io/diagrams.net) para
+estudiar y discutir toda la solución antes de una entrevista —arquitectura, flujo
+feliz, flujo de rechazo, máquina de estados, modelo de datos, mensajería, JWT,
+despliegue— con orden de lectura y "qué te pueden preguntar" por cada uno:
+[`docs/explicacion/README.md`](docs/explicacion/README.md).
+
 ## Decisiones de diseño
 
 El enunciado tiene contradicciones reales — se resuelven con evidencia, no a ciegas.

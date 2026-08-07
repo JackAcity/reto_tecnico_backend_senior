@@ -270,6 +270,43 @@ nube y facturación para que el evaluador ni siquiera pueda levantarlo, rompiend
 requisito real de `docker-compose` autocontenido. El volumen nombrado ya resuelve el
 riesgo real dentro de este alcance.
 
+### C17 — RabbitMQ vs. Kafka a escala extrema
+
+Pregunta planteada (discutida con el usuario): *"¿Kafka para mensajes masivos de
+alta concurrencia — quince millones en menos de un minuto — o hay que usar
+RabbitMQ igual?"*
+
+**La diferencia real es quién hace el trabajo por mensaje.** RabbitMQ es *broker
+inteligente, consumidor tonto*: el broker decide el ruteo (exchange → bindings →
+cola) y rastrea qué mensajes están sin confirmar por cada consumidor — trabajo
+por mensaje, en memoria. Kafka es *broker tonto, consumidor inteligente*: el
+broker solo anexa al final de un log inmutable particionado (I/O secuencial a
+disco, más `sendfile()` zero-copy) y cada consumidor lleva su propio offset — casi
+cero decisión por mensaje del lado del broker.
+
+**A ~250 000 msg/seg sostenidos, el diseño de Kafka es la respuesta correcta, no
+una preferencia.** Particionar y agregar consumidores en paralelo escala
+linealmente. RabbitMQ puede empujarse a ese volumen (colas quorum, muchas colas,
+o específicamente RabbitMQ Streams, la feature construida para competir con Kafka
+en throughput) pero ahí se está reconstruyendo a mano lo que Kafka da nativo.
+RabbitMQ rinde mejor en volumen medio con ruteo rico (topic exchanges, prioridad,
+TTL, dead-letter por mensaje); Kafka rinde mejor en volumen bruto sostenido.
+
+Dos diferencias adicionales que pesan a esa escala: **replay** (Kafka retiene el
+log, varios *consumer groups* independientes releen el mismo stream a su propio
+ritmo; RabbitMQ clásico borra al confirmar) y **exactly-once nativo** (productor
+idempotente + API transaccional en Kafka; RabbitMQ es at-least-once por diseño,
+exige idempotencia del lado del consumidor — exactamente lo que este proyecto ya
+resuelve con el índice único + `ON CONFLICT`, §C8).
+
+**Resolución: no aplica a este reto, y no es contradicción con lo anterior.** El
+volumen acá es un mensaje por archivo subido — la decisión nunca fue throughput.
+El enunciado permite "RabbitMQ/Kafka/otro" explícitamente, el DLX + reintento +
+routing-key de RabbitMQ calza directo con "mínimo 2 colas, intercambio directo o
+topic", y meter Kafka (Zookeeper/KRaft, gestión de particiones, cluster de
+brokers) sería sobrecarga operativa pura para un docker-compose de demo — mismo
+argumento de costo/beneficio que C13/C14/C16.
+
 ## 3. Decisiones de librerías (y por qué)
 
 | Necesidad | Elección | Razón |

@@ -117,6 +117,7 @@ Resumen:
 | C14 | Endurecimiento adicional (a pedido, criterio DevSecOps) | Contenedores no-root, puertos en loopback, validación de firma de archivo (no solo extensión), `nosniff` |
 | C15 | CQRS — ¿una tabla o dos? | Una — el modelo de lectura ya está separado en código (`ConsultaCargas`); dos tablas violaría la consistencia que `sp_resolver_periodo` necesita |
 | C16 | Postgres en contenedor, ¿riesgo de perder la base? | No es el contenedor — es volumen persistente + backup, ortogonal a Docker. `pgdata:` ya es un volumen nombrado; un servicio administrado (RDS) ataría el proyecto a una cuenta de nube que el evaluador no tiene por qué tener |
+| C17 | RabbitMQ vs. Kafka a escala extrema (~250K msg/seg) | Kafka es la respuesta correcta a esa escala (log particionado, I/O secuencial), pero acá el volumen es un mensaje por archivo — la decisión nunca fue throughput. RabbitMQ calza directo con "mínimo 2 colas" del enunciado |
 
 ## Matriz de trazabilidad
 

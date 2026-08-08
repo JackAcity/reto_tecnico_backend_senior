@@ -6,6 +6,50 @@ almacenamiento en SeaweedFS, persistencia en PostgreSQL, todo dockerizado.
 El enunciado original está en [`docs/RETO-ORIGINAL.md`](docs/RETO-ORIGINAL.md). Este
 documento es la entrega: arquitectura, decisiones, cómo levantar y cómo probar.
 
+## Video de la demo
+
+**[▶ Ver demo completa (~5 min)](https://drive.google.com/file/d/1VGuuXTcuEjBK-6rf-VLUXAvVc3XzjMx4/view?usp=sharing)**
+— login → subida real → estados por polling cada 3 s → correo (Mailpit) → colas
+(RabbitMQ) → caso rechazado (mismo periodo dos veces) → permisos por rol (403).
+
+## En 30 segundos
+
+- **Gateway → Auth/Control → RabbitMQ → CargaMasiva → RabbitMQ → Notificaciones**,
+  una Postgres compartida, SeaweedFS para el archivo. 5 microservicios, Clean
+  Architecture en cada uno.
+- Excel leído en **streaming** (memoria acotada, no se carga el libro entero),
+  inserción **set-based** (`unnest`, un round trip) en vez de fila por fila.
+- Test de aceptación determinista: `samples/carga_masiva_productos.xlsx` →
+  **154 filas insertadas / 46 rechazadas**, reproducible con un comando.
+- **100 tests automatizados**, corridos contra contenedores reales — sin dobles
+  de prueba para Postgres/RabbitMQ/SeaweedFS.
+- `docker compose up -d --wait` levanta los 9 contenedores y confirma que
+  están sanos antes de devolver el control.
+
+## Rúbrica de evaluación
+
+Dónde está la evidencia de cada criterio del enunciado (§6), para no tener que
+buscarla:
+
+| Criterio | Peso | Evidencia |
+|---|---|---|
+| **Arquitectura** — microservicios independientes, limpieza, manejo de colas y estados | 25% | [Arquitectura](#arquitectura) · [Decisiones de diseño](#decisiones-de-diseño) · Clean Architecture por servicio (Domain → Application → Infrastructure → Api) |
+| **Funcionalidad** — flujo completo operativo, procesamiento real del Excel, persistencia correcta | 35% | [Video de la demo](#video-de-la-demo) · [Cómo probar](#cómo-probar) · test determinista 154/46 (`specs/procesamiento-excel.md`) |
+| **Docker / DevOps** — compose funcional, servicios se levantan sin errores | 20% | [Cómo levantar](#cómo-levantar) — 9 contenedores, `--wait` lo verifica en el propio comando |
+| **Frontend o Colecciones Postman** | 20% | [Cómo probar](#cómo-probar) — Postman verificado con `newman` (15/15) **y**, además, cliente React opcional |
+
+## Índice
+
+- [Cómo levantar](#cómo-levantar)
+- [Cómo probar](#cómo-probar)
+- [Arquitectura](#arquitectura)
+- [Decisiones de diseño](#decisiones-de-diseño)
+- [Matriz de trazabilidad](#matriz-de-trazabilidad)
+- [Seguridad por diseño](#seguridad-por-diseño)
+- [Trade-offs y fuera de alcance](#trade-offs-y-fuera-de-alcance)
+- [Scripts de base de datos](#scripts-de-base-de-datos)
+- [Fixtures de prueba](#fixtures-de-prueba)
+
 ## Cómo levantar
 
 ```bash
@@ -188,6 +232,7 @@ Declarados a propósito, no descuidos — razón completa en `proposal.md`/`desi
 - **Database-per-service** — el diagrama entregado prescribe una sola base.
 - **Transactional Outbox** — mitigado con publish post-commit + estado terminal `Fallida` (§C7).
 - **TLS local, CSP completa, Vault** — evaluados y descartados por costo/beneficio para este alcance (§C13/§C14). CORS y `X-Frame-Options` sí se aplicaron — ver "Seguridad por diseño" arriba.
+- **Pipeline no es memoria O(1) de punta a punta** — el insert ya es por lotes (ver abajo), pero `ManejadorCarga`/`ProcesadorLote` siguen materializando el archivo completo en listas antes de insertar. Medido, no ignorado: [`docs/pruebas-de-escala.md`](docs/pruebas-de-escala.md).
 - **Notificación en cargas `Rechazada`/`Bloqueada`/`Fallida`** — el enunciado solo define `Finalizado → Notificado`; se respeta tal cual, aunque implica que un rechazo no se comunica por correo.
 
 ## Scripts de base de datos
@@ -201,7 +246,4 @@ script es para inspección o para levantar el esquema sin Docker.
 
 - `samples/carga_masiva_productos.xlsx` — el archivo real del enunciado. Camino feliz: 200 filas, 3 periodos, resultado determinista **154 insertados / 46 `Existente`**.
 - `samples/fixture-sucio.xlsx` — genera las 8 reglas de limpieza/validación en una sola carga (fila vacía descartada, columnas vacías con default, precio inválido, periodo inválido/ausente, código ausente, duplicado intra-lote). Verificado en vivo: `10 filas → 5 insertadas / 5 rechazadas`, exactamente los 8 motivos esperados.
-
-## Video
-
-[Demo del flujo completo (~5 min)](https://drive.google.com/file/d/1VGuuXTcuEjBK-6rf-VLUXAvVc3XzjMx4/view?usp=sharing)
+- **Escala (2M filas)** — no versionado (se regenera con `scripts/generar_masivo.py`). Corrida real completa, incluyendo un bug encontrado y arreglado en el proceso: [`docs/pruebas-de-escala.md`](docs/pruebas-de-escala.md).

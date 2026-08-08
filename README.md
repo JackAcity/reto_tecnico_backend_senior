@@ -204,4 +204,4 @@ script es para inspección o para levantar el esquema sin Docker.
 
 ## Video
 
-_Pendiente — se enlaza acá al grabarlo (Bloque 9)._
+[Demo del flujo completo (~5 min)](https://drive.google.com/file/d/1VGuuXTcuEjBK-6rf-VLUXAvVc3XzjMx4/view?usp=sharing)

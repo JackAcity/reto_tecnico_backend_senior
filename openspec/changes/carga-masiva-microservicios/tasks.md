@@ -102,10 +102,9 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 - [x] 8.1 Colección Postman de todos los endpoints (`postman/`), con environment para el JWT
       — corrida real vía `newman` contra el stack en vivo: 15/15 requests, 12/12 asserts ✅ 06-ago
-- [ ] 8.2 `README.md` propio: arquitectura, decisiones, cómo levantar, trade-offs
-- [ ] 8.3 Matriz de trazabilidad: cada requisito "obligatorio" → dónde está implementado
-      (`matriz-requisitos.md` ya existe desde la planificación — falta pasarla a README y
-      verificar que sigue reflejando lo construido, no lo planeado)
+- [x] 8.2 `README.md` propio: arquitectura, decisiones, cómo levantar, trade-offs
+- [x] 8.3 Matriz de trazabilidad: cada requisito "obligatorio" → dónde está implementado
+      (`matriz-requisitos.md` enlazada en README §Matriz de trazabilidad)
 - [x] 8.4 `scripts/sql/` con esquema y procedimientos — verificado vigente, sin migraciones
       nuevas desde Bloque 2
 - [x] 8.5 Fixtures sucios (`samples/fixture-sucio.xlsx`) demostrando defaults y filas vacías
@@ -116,9 +115,9 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Bloque 9 — Video (h 17–18)
 
-- [ ] 9.1 Guion de 5 min: login → upload → estados por polling → correo en MailHog
-- [ ] 9.2 Mostrar **el caso rechazado** (mismo periodo dos veces) y la tabla de auditoría
-- [ ] 9.3 Grabar, subir, enlazar en el README
+- [x] 9.1 Guion de 5 min: login → upload → estados por polling → correo en MailHog
+- [x] 9.2 Mostrar **el caso rechazado** (mismo periodo dos veces) y la tabla de auditoría
+- [x] 9.3 Grabar, subir, enlazar en el README
 
 ## Opcional — solo si el bloque 8 cierra con holgura
 

@@ -177,7 +177,7 @@ de `localhost`. Trade-off consciente, no descuido.
 ### C14 — Endurecimiento adicional (seguridad por diseño)
 
 Tampoco pedido por el enunciado, pero auditado a pedido explícito con criterio DevSecOps.
-Tres controles de alto valor y bajo costo, aplicados; tres descartados con su razón.
+Seis controles de alto valor y bajo costo, aplicados; dos descartados con su razón.
 
 **Aplicados:**
 
@@ -199,16 +199,29 @@ Tres controles de alto valor y bajo costo, aplicados; tres descartados con su ra
    SeaweedFS + una cola + un ciclo de CargaMasiva en un archivo que iba a fallar de
    todos modos al intentar leerse como Excel.
 4. **`X-Content-Type-Options: nosniff`**, en `ServiceDefaults` (un solo lugar para los
-   5 servicios). Único header de seguridad HTTP que rinde acá — ver por qué no los
-   demás, abajo.
+   5 servicios).
+5. **CORS con origen explícito.** Reevaluado al construirse el cliente React (O.1) —
+   ver siguiente punto: dejó de ser un "no aplica" para ser un prerequisito técnico.
+   `AddCors`/`UseCors` **solo en Gateway** (única puerta pública), `WithOrigins`
+   con el origen del cliente por config (`Cors:OrigenesPermitidos`), nunca
+   `AllowAnyOrigin`. Sin `AllowCredentials`: el JWT viaja en `Authorization`, no en
+   cookies, así que no lo necesita — esto también es lo que hace que CSRF clásico
+   (basado en que el navegador adjunta cookies solo) no aplique a esta API.
+6. **`X-Frame-Options: DENY`, en el dev server de Vite del cliente React.** Mismo
+   motivo que el punto anterior: con un cliente browser real, un sitio malicioso
+   podría enmarcarlo en un `<iframe>` invisible y usar clickjacking contra una acción
+   autenticada simple (ej. "Cerrar sesión" — subir un archivo resiste esto mejor,
+   exige un file picker nativo que no se puede automatizar a ciegas). `frame-ancestors`
+   no es soportado vía `<meta>`, tiene que ser un header real de servidor; el dev
+   server de Vite es el único servidor HTTP que este frontend usa hoy, así que es
+   donde se aplica (`vite.config.ts`, `server.headers` + `preview.headers`).
 
 **Descartados, con razón:**
 
 | Control | Por qué no |
 |---|---|
-| **CSP / X-Frame-Options** | Protegen contenido HTML renderizado en navegador (XSS, clickjacking). Los 5 servicios son APIs JSON puras, sin vistas — no hay página que clickjackear ni script que inyectar. Se reevalúa si el cliente React opcional (O.1) se construye. |
-| **TLS/HTTPS local** | El modelo de amenaza real es "la propia máquina del evaluador", no un atacante en la red — y con el punto 2 ya resuelto, ni siquiera hay superficie de red más allá de `localhost`. Añadir certificados de desarrollo a 5 Dockerfiles + el gateway es costo real por un riesgo que no existe en este alcance. |
-| **CORS** | Solo aplica si un navegador llama a la API desde otro origen. No hay cliente browser hoy (Postman no aplica same-origin policy); se agrega junto con el cliente React si se construye. |
+| **CSP completa** (más allá de `frame-ancestors`, ya cubierto arriba vía `X-Frame-Options`) | El *host* real que necesitaría una CSP estricta (`script-src`, etc.) es un servidor de producción sirviendo el build estático — no existe en este repo: el frontend es deliberadamente dev-server-only (`vite dev`), igual que el resto del alcance no contempla contenerizarlo (el enunciado no lo exige). Forzar una CSP estricta sobre el dev server de Vite arriesga romper HMR (WebSocket + estilos inline del propio tooling) por un artefacto que nunca es lo que se despliega. Se reevalúa si el frontend se conteneriza para producción. |
+| **TLS/HTTPS local** | El modelo de amenaza real es "la propia máquina del evaluador", no un atacante en la red — y con el punto 2 ya resuelto, ni siquiera hay superficie de red más allá de `localhost` (el cliente React corre en la misma máquina, contra el mismo `localhost:8080`). Añadir certificados de desarrollo a 5 Dockerfiles + el gateway + el dev server de Vite es costo real por un riesgo que no existe en este alcance. |
 | **Rate limiter con sliding window / token bucket** | El nativo (`FixedWindowRateLimiter`, Bloque 4) admite ráfaga doble en el borde de la ventana — límite conocido. Sliding window/token bucket exige código propio o un paquete de pago; el nativo ya cumple el requisito obligatorio (§4.3) sin esa brecha siendo explotable de forma práctica en este alcance. |
 | **Revocación de access token** | JWT stateless por diseño: un token robado sigue siendo válido hasta su expiración (60 min). Mitigarlo exige una lista de revocación consultada en cada request, lo que reintroduce el estado que el JWT stateless evita — trade-off estándar y documentado de cualquier sistema JWT sin sesión server-side; el refresh token sí rota y sí se revoca (Bloque 3). |
 

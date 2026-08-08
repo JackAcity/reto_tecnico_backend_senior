@@ -178,6 +178,7 @@ Auditoría propia, más allá de lo pedido explícitamente por el enunciado (det
 - `X-Correlation-Id` de entrada saneado antes de loguearlo (evita inyección de líneas de log)
 - Contenedores no-root, puertos de infraestructura acotados a `127.0.0.1`
 - Ninguna credencial de infraestructura tiene fallback en código — todo falla al arrancar si falta, en vez de adivinar un valor por defecto
+- CORS en Gateway con origen explícito (nunca `AllowAnyOrigin`, sin `AllowCredentials` — el JWT viaja en `Authorization`, no en cookies) y `X-Frame-Options: DENY` en el dev server del cliente React, contra clickjacking sobre acciones autenticadas — ambos reevaluados y aplicados al construirse el frontend (§C14)
 
 ## Trade-offs y fuera de alcance
 
@@ -186,7 +187,7 @@ Declarados a propósito, no descuidos — razón completa en `proposal.md`/`desi
 - **CI/CD** — cero menciones en el enunciado; el 20% de DevOps es literal "docker-compose funcional".
 - **Database-per-service** — el diagrama entregado prescribe una sola base.
 - **Transactional Outbox** — mitigado con publish post-commit + estado terminal `Fallida` (§C7).
-- **TLS local, CORS, Vault** — evaluados y descartados por costo/beneficio para este alcance (§C13/§C14).
+- **TLS local, CSP completa, Vault** — evaluados y descartados por costo/beneficio para este alcance (§C13/§C14). CORS y `X-Frame-Options` sí se aplicaron — ver "Seguridad por diseño" arriba.
 - **Notificación en cargas `Rechazada`/`Bloqueada`/`Fallida`** — el enunciado solo define `Finalizado → Notificado`; se respeta tal cual, aunque implica que un rechazo no se comunica por correo.
 
 ## Scripts de base de datos

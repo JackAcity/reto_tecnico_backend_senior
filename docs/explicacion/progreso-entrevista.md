@@ -83,14 +83,14 @@ Modos del skill sin usar todavía: **1** (recorrido guiado completo),
 - Checklist de entregables (§7 del enunciado, `docs/RETO-ORIGINAL.md:354-368`):
   código en GitHub ✅, README ✅, instrucciones de despliegue ✅, scripts SQL
   ✅, Postman ✅ (cubre el 20% de "Frontend o Postman" del rubro, React no
-  suma nota ahí), **video ❌ — el único pendiente real**.
+  suma nota ahí), **video ✅ — enlazado en README, checklist completo**.
 - Rubro de evaluación (`docs/RETO-ORIGINAL.md:325-350`): Arquitectura 25% +
   Funcionalidad 35% + Docker/DevOps 20% + Frontend-o-Postman 20% = 100%.
   CI/CD no aparece en ningún bloque — cero impacto en nota, no vale la pena
   meterle tiempo ahora.
-- **Al grabar el video:** enlazarlo en `README.md` sección "Video" (reemplaza
-  el placeholder "Pendiente"), commit en `develop`, fast-forward a `main`,
-  push a `jackacity main` — mismo procedimiento que ya se usó acá.
+- **Video grabado y enlazado** en `README.md` sección "Video". Bloque 9
+  completo (9.1/9.2/9.3), Bloque 8 completo (8.2/8.3 recontados: ya estaban
+  hechos, checkboxes desactualizados).
 
 ## Para retomar
 

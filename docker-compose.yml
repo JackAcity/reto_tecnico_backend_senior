@@ -101,6 +101,8 @@ services:
       Servicios__Control: http://control:8080/
       Servicios__CargaMasiva: http://cargamasiva:8080/
       Servicios__Notificaciones: http://notificaciones:8080/
+      # Origen del cliente React (Vite dev). Program.cs ya trae este default si falta.
+      Cors__OrigenesPermitidos: ${CORS_ORIGENES_PERMITIDOS:-http://localhost:5173}
     build: { context: ., dockerfile: src/Gateway/Dockerfile }
     # Única puerta pública del sistema (design.md): también acotada a loopback,
     # nada obliga a que sea alcanzable desde la LAN del evaluador.

@@ -151,11 +151,21 @@ public sealed class GatewayTests(GatewayFixture fixture)
     /// <summary>
     /// §3.2a de punta a punta, no solo PermisosDe en aislado: un usuario real,
     /// autenticado, sin el claim carga:masiva, debe ser rechazado por la policy
-    /// del gateway con 403 — ni 401 (sí está autenticado) ni 200 (no tiene el
-    /// permiso). El rol "consulta" lo siembra Auth al arrancar (Seed:ConsultaRol).
+    /// del gateway con 403 al SUBIR — ni 401 (sí está autenticado) ni 200 (no
+    /// tiene el permiso). El rol "consulta" lo siembra Auth al arrancar
+    /// (Seed:ConsultaRol).
+    ///
+    /// Antes esta prueba pedía GET /cargas y esperaba 403 — codificaba un bug: el
+    /// Gateway exigía carga:masiva para TODO método sobre /cargas/{**resto}, así
+    /// que "consulta" ni siquiera podía ver su propio historial, aunque Control ya
+    /// exige solo estar autenticado en sus GET (Control.Api/Program.cs). Lo expuso
+    /// el cliente React (primer consumidor real en navegador de ese rol) — ver
+    /// specs/frontend-cliente-react.md. Corregido separando la ruta del Gateway en
+    /// cargas-subida (POST, PoliticaCargaMasiva) y cargas-consulta (GET,
+    /// PoliticaAutenticado); esta prueba ahora cubre ambas mitades del contrato.
     /// </summary>
     [Fact]
-    public async Task Cargas_ConUsuarioSinPermiso_Da403()
+    public async Task Cargas_ConUsuarioSinPermiso_SubirDa403PeroConsultarDa200()
     {
         var login = await GatewayFixture.LoginConReintentoAsync(fixture.Cliente,
             Environment.GetEnvironmentVariable("SEED_CONSULTA_EMAIL") ?? "consulta@reto.local",
@@ -163,12 +173,19 @@ public sealed class GatewayTests(GatewayFixture fixture)
         using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
         var tokenSinPermiso = json.RootElement.GetProperty("accessToken").GetString();
 
-        var peticion = new HttpRequestMessage(HttpMethod.Get, "/cargas");
-        peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenSinPermiso);
+        using var contenido = new MultipartFormDataContent
+        {
+            { new ByteArrayContent([0x50, 0x4B, 0x03, 0x04]), "archivo", "prueba.xlsx" }
+        };
+        var subida = new HttpRequestMessage(HttpMethod.Post, "/cargas") { Content = contenido };
+        subida.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenSinPermiso);
+        var respuestaSubida = await fixture.Cliente.SendAsync(subida);
+        Assert.Equal(HttpStatusCode.Forbidden, respuestaSubida.StatusCode);
 
-        var respuesta = await fixture.Cliente.SendAsync(peticion);
-
-        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+        var consulta = new HttpRequestMessage(HttpMethod.Get, "/cargas");
+        consulta.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenSinPermiso);
+        var respuestaConsulta = await fixture.Cliente.SendAsync(consulta);
+        Assert.Equal(HttpStatusCode.OK, respuestaConsulta.StatusCode);
     }
 
     /// <summary>§C12 — /auth/login tiene su propio techo, mucho menor que el de /cargas.</summary>

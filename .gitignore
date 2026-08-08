@@ -486,5 +486,9 @@ $RECYCLE.BIN/
 *.user
 TestResults/
 
+# Generado por scripts/generar_masivo.py para probar escala (2M filas) --
+# no se commitea, se regenera con un comando.
+samples/carga_masiva_2M.xlsx
+
 # Configuración local de Claude Code (rutas de esta máquina)
 .claude/settings.local.json

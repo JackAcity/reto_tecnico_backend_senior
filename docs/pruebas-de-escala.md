@@ -84,17 +84,58 @@ Mismo archivo (`carga_masiva_2M.xlsx`), mismo stack reconstruido con el fix.
 - **100/100 tests automatizados** siguen en verde después del cambio
   (`dotnet test tests/CargaMasiva.Tests`).
 
-## Qué queda fuera de este alcance
+## Corrida 3 — 5M filas: no falla limpio, entra en OOM-loop
 
-El pico de memoria (~1.4-2.4 GiB dependiendo de la corrida) viene de que
-`ManejadorCarga`/`ProcesadorLote` siguen materializando el archivo completo
-en listas antes de insertar — el chunking resuelve el timeout de Postgres
-(el bug que de verdad rompía la carga), no convierte el pipeline en memoria
-verdaderamente O(1). Para eso haría falta procesar el Excel en lotes de punta
-a punta (leer N filas → resolver periodos → insertar → siguiente N), no solo
-en el insert final. No se implementó — el bug real (`Fallida` a los 2M) ya
-está resuelto y verificado; ir más allá es optimización sin un problema
-medido que la justifique todavía.
+Mismo procedimiento, `carga_masiva_5M.xlsx` (5,000,000 filas, 125 MB,
+generado en 8m01s). Bump temporal de `Carga:TamanoMaximoMb` a 250, stack
+reconstruido con el fix de chunking (ya validado a 2M en la Corrida 2).
+
+**No llegó a `Fallida`.** Después de ~20 minutos sin salir de `EnProceso`,
+`docker inspect` mostró **2 restarts** del contenedor `cargamasiva` durante
+esa única carga, y memoria trepando otra vez hacia **9.03 GiB de un VM de
+Docker con 11.53 GiB totales** — compartido con Postgres, RabbitMQ,
+SeaweedFS y el resto del stack.
+
+Logs revisados (`docker logs --since`, grep de la ventana completa): **cero**
+líneas de `"Fallo procesando"` (el catch que ya conocíamos de la Corrida 1),
+cero `"shutting down"` — es decir, el proceso no murió por una excepción
+manejada ni un shutdown ordenado. Consistente con **OOM-kill del kernel**
+dentro del contenedor: lo mata en seco, sin ack, RabbitMQ redelivera el
+mismo mensaje al reiniciar el consumidor, y el ciclo completo (descargar,
+reparsear, reprocesar desde cero) arranca de nuevo — sin tope. El circuito
+de reintento de la app (3 intentos, `x-death`) nunca se activa porque nunca
+llega a esa rama de código: el proceso no sobrevive lo suficiente para
+contar el intento.
+
+**Intervención manual necesaria** para cortarlo: `docker compose stop
+cargamasiva` (si no, el loop no tiene techo propio) + purgar el mensaje
+atascado de la cola vía la API de management de RabbitMQ. Verificado
+después: stack completo healthy, **100/100 tests siguen en verde** — el
+incidente no dejó nada roto, solo agotó tiempo y memoria.
+
+## Dónde está el techo real (con este equipo)
+
+- **2M filas**: bien. 3m43s, memoria acotada (~1.4-2.4 GiB), termina
+  `Finalizado`.
+- **5M filas**: mal. Nunca termina — OOM-kill en loop, hay que intervenir
+  a mano para pararlo.
+- El techo está en algún punto entre esos dos, en **este** equipo (VM de
+  Docker de 11.53 GiB). En un servidor con más RAM el número sube, pero la
+  causa no cambia: el chunking de la Corrida 2 arregló el *timeout de
+  Postgres*, no convirtió el pipeline en memoria O(1). `ManejadorCarga`
+  (`.ToList()` del archivo completo) y `ProcesadorLote` (varias copias
+  completas en `List<FilaProducto>`) siguen materializando el archivo
+  entero antes de insertar nada — a 2M cabe en el presupuesto de memoria
+  del contenedor, a 5M no.
+
+Esto **no** es ya "optimización sin problema medido" — es un techo medido,
+concreto, con un incidente real (loop de OOM que hubo que cortar a mano) que
+lo prueba. Documentado como limitación conocida en vez de arreglado en este
+alcance: arreglar el bug de la Corrida 1 (el timeout) era necesario para que
+la carga masiva funcionara en absoluto; hacer el pipeline streaming de
+punta a punta es un cambio más grande (tocar `ManejadorCarga` y
+`ProcesadorLote`, no solo `InsertadorMasivo`) que no se justifica sin que el
+enunciado o un caso de uso real pida archivos de ese tamaño.
 
 ## Cómo reproducir
 
@@ -106,3 +147,12 @@ docker compose up -d --wait
 # .env: CARGA_TAMANO_MAXIMO_MB=25 (revertir)
 docker compose up -d --wait
 ```
+
+Para reproducir la Corrida 3 (5M, cuidado — entra en el OOM-loop descrito
+arriba, tener `docker compose stop cargamasiva` a mano): mismo procedimiento
+con `python scripts/generar_masivo.py 5000000 samples/carga_masiva_5M.xlsx`.
+Si el estado no sale de `EnProceso` en varios minutos y `docker inspect
+reto-carga-masiva-cargamasiva-1 --format '{{.RestartCount}}'` sube, es el
+mismo cuadro — parar el consumidor y purgar la cola (`DELETE
+/api/queues/%2F/carga_masiva/contents` contra la management API de
+RabbitMQ) en vez de esperar a que resuelva solo.

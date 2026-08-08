@@ -232,7 +232,7 @@ Declarados a propósito, no descuidos — razón completa en `proposal.md`/`desi
 - **Database-per-service** — el diagrama entregado prescribe una sola base.
 - **Transactional Outbox** — mitigado con publish post-commit + estado terminal `Fallida` (§C7).
 - **TLS local, CSP completa, Vault** — evaluados y descartados por costo/beneficio para este alcance (§C13/§C14). CORS y `X-Frame-Options` sí se aplicaron — ver "Seguridad por diseño" arriba.
-- **Pipeline no es memoria O(1) de punta a punta** — el insert ya es por lotes (ver abajo), pero `ManejadorCarga`/`ProcesadorLote` siguen materializando el archivo completo en listas antes de insertar. Medido, no ignorado: [`docs/pruebas-de-escala.md`](docs/pruebas-de-escala.md).
+- **Pipeline no es memoria O(1) de punta a punta** — el insert ya es por lotes (ver abajo), pero `ManejadorCarga`/`ProcesadorLote` siguen materializando el archivo completo en listas antes de insertar. Techo real medido, no hipotético: 2M filas funciona (3m43s, ~2 GiB), 5M entra en loop de OOM-kill del contenedor. Detalle completo, incluido cómo se cortó el incidente: [`docs/pruebas-de-escala.md`](docs/pruebas-de-escala.md).
 - **Notificación en cargas `Rechazada`/`Bloqueada`/`Fallida`** — el enunciado solo define `Finalizado → Notificado`; se respeta tal cual, aunque implica que un rechazo no se comunica por correo.
 
 ## Scripts de base de datos

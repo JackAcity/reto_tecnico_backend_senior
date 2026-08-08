@@ -67,6 +67,31 @@ Modos del skill sin usar todavía: **1** (recorrido guiado completo),
 **4** (simulacro rápido mezclando todo), **5** (ensayo del guion del video,
 `docs/guion-video.md`).
 
+## Entrega — GitHub
+
+- Repo nuevo, propio: **https://github.com/JackAcity/reto_tecnico_backend_senior**
+  (el original, `desarrollo-acity/...`, es de la empresa — sin permiso de
+  escritura, se dejó como remoto `origin` de solo lectura; el nuevo es el
+  remoto `jackacity`).
+- **`main`** = lo que revisa el evaluador. Pusheado, fast-forward desde
+  `develop`, solo código + docs del entregable (README, `openspec/changes/...`,
+  `docs/explicacion/*`, `docs/guion-video.md`, `docs/RETO-ORIGINAL.md`). Sin
+  `.claude/` (tooling de Claude Code) ni `progreso-entrevista.md` (este mismo
+  archivo) ni `docs/propuesta-jack/` (borrador viejo) — esos quedan SOLO en
+  `develop`.
+- **`develop`** = todo, incluido este archivo y el modo entrevistador.
+- Checklist de entregables (§7 del enunciado, `docs/RETO-ORIGINAL.md:354-368`):
+  código en GitHub ✅, README ✅, instrucciones de despliegue ✅, scripts SQL
+  ✅, Postman ✅ (cubre el 20% de "Frontend o Postman" del rubro, React no
+  suma nota ahí), **video ❌ — el único pendiente real**.
+- Rubro de evaluación (`docs/RETO-ORIGINAL.md:325-350`): Arquitectura 25% +
+  Funcionalidad 35% + Docker/DevOps 20% + Frontend-o-Postman 20% = 100%.
+  CI/CD no aparece en ningún bloque — cero impacto en nota, no vale la pena
+  meterle tiempo ahora.
+- **Al grabar el video:** enlazarlo en `README.md` sección "Video" (reemplaza
+  el placeholder "Pendiente"), commit en `develop`, fast-forward a `main`,
+  push a `jackacity main` — mismo procedimiento que ya se usó acá.
+
 ## Para retomar
 
 Decir "seguimos con el modo entrevistador" o `/preparar-entrevista` — el

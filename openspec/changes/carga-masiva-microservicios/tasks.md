@@ -122,5 +122,31 @@ Fuente de verdad del progreso. Marcar `[x]` al completar.
 
 ## Opcional — solo si el bloque 8 cierra con holgura
 
-- [ ] O.1 Cliente React (Vite): login, upload, historial, detalle
+- [x] O.1 Cliente React (Vite) — spec: `specs/frontend-cliente-react.md`
+  - [x] O.1.1 Scaffold Vite+React+TS, react-router-dom, vitest+testing-library
+  - [x] O.1.2 API client (fetch a gateway) + AuthContext con refresh transparente
+  - [x] O.1.3 Pantallas: Login, Upload, Historial (polling), Detalle (+ descarga blob)
+  - [x] O.1.4 Test determinista `Login.test.tsx` verde (2/2), `tsc -b` sin errores
+  - [x] O.1.5 Verificación manual contra stack real (Chrome real, no solo curl):
+        login admin → historial con datos reales → detalle con periodos/errores →
+        descarga del .xlsx original vía blob → subida real de `fixture-sucio.xlsx`
+        (Carga #61, procesada end-to-end hasta `Notificado` en ~1 s, 5/5 igual que
+        el fixture documentado) → login inválido muestra error sin navegar → usuario
+        `consulta` sube y recibe 403 manejado sin crashear.
+        **2 bugs reales de backend encontrados y corregidos en el camino** (ninguno
+        existía en el enunciado, ambos preexistentes al frontend, expuestos por ser
+        el primer cliente real en un navegador):
+        1. Faltaba CORS en Gateway — declarado fuera de alcance en README/design.md
+           asumiendo Postman como único cliente; con un cliente browser real pasa a
+           ser prerequisito técnico. `AddCors`/`UseCors` agregado solo en Gateway,
+           origen explícito por config, sin `AllowAnyOrigin` ni `AllowCredentials`.
+        2. La ruta `/cargas/{**resto}` del Gateway exigía el permiso `carga:masiva`
+           para TODO método, incluyendo `GET` — el rol `consulta` (autenticado, sin
+           ese permiso) recibía 403 al pedir su propio historial, aunque Control ya
+           exige solo "autenticado" en sus GET. Además esa ruta usaba el rate limit
+           de subida (10/min), insuficiente para el polling cada 3 s. Separada en
+           `cargas-subida` (POST, `PoliticaCargaMasiva`, 10/min) y `cargas-consulta`
+           (GET, `PoliticaAutenticado`, 60/min).
+        `dotnet test` completo re-corrido tras el cambio de Gateway (ver resultado
+        en README) para confirmar que el split de rutas no rompió nada.
 - [ ] O.2 Workflow de GitHub Actions (`dotnet build` + el test) — **solo si sale verde**

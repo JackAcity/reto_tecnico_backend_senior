@@ -55,12 +55,41 @@ curl -X POST http://localhost:8080/cargas \
 curl http://localhost:8080/cargas -H "Authorization: Bearer $TOKEN"
 ```
 
-**Tests automatizados** (95, corren contra contenedores reales — no hay dobles de
+**Tests automatizados** (100, corren contra contenedores reales — no hay dobles de
 prueba para Postgres/RabbitMQ/SeaweedFS, solo para llamadas HTTP salientes puntuales):
 
 ```bash
 dotnet test tests/CargaMasiva.Tests/CargaMasiva.Tests.csproj
 ```
+
+**Cliente web (React, opcional — §2.1 del enunciado)** — las 4 pantallas exigidas
+(login, subida, historial, detalle), consumiendo el Gateway igual que Postman/curl,
+sin lógica de negocio propia. Spec completo, contrato consumido y decisiones en
+[`specs/frontend-cliente-react.md`](openspec/changes/carga-masiva-microservicios/specs/frontend-cliente-react.md).
+
+```bash
+cd frontend
+cp .env.example .env    # VITE_API_URL=http://localhost:8080
+npm install
+npm run dev              # http://localhost:5173
+npm test                 # 2/2 — vitest + testing-library, sin backend
+```
+
+Verificado en vivo (Chrome real, no solo curl): login → historial con polling cada
+3 s → detalle con periodos/errores auditados → descarga del `.xlsx` original →
+subida real hasta `Notificado`. Esa verificación expuso 2 bugs preexistentes del
+backend (ninguno introducido por el frontend, ambos invisibles mientras el único
+cliente probado era Postman) — detalle completo en
+[`tasks.md` §O.1.5](openspec/changes/carga-masiva-microservicios/tasks.md):
+
+1. **Gateway sin CORS** — necesario en cuanto el cliente deja de ser Postman y pasa
+   a ser un navegador real en otro origen (`localhost:5173`). `AddCors`/`UseCors`
+   agregado solo en Gateway, origen explícito por config, sin `AllowAnyOrigin`.
+2. **La ruta `/cargas/{**resto}` del Gateway exigía el permiso `carga:masiva` para
+   TODO método**, incluido `GET` — el rol `consulta` no podía ni ver su propio
+   historial, aunque Control ya solo exige "autenticado" en sus `GET`. Separada en
+   `cargas-subida` (POST) y `cargas-consulta` (GET, con el rate limit general de
+   60/min en vez del de subida de 10/min — el polling lo necesitaba).
 
 ## Arquitectura
 

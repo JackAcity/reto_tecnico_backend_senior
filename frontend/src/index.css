@@ -1,0 +1,150 @@
+:root {
+  --texto: #3f3d45;
+  --texto-h: #17151d;
+  --fondo: #f6f5f8;
+  --superficie: #ffffff;
+  --borde: #e2e0e6;
+  --acento: #5b3df5;
+  --acento-hover: #4a2fe0;
+  --gris: #6b6875;
+  --azul: #2563eb;
+  --verde: #16a34a;
+  --rojo: #dc2626;
+  --ambar: #d97706;
+
+  font: 15px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+h1, h2, h3 { color: var(--texto-h); font-weight: 600; margin: 0 0 12px; }
+h1 { font-size: 24px; }
+h2 { font-size: 19px; }
+h3 { font-size: 15px; margin-top: 24px; }
+
+a { color: var(--acento); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--gris); margin-bottom: 14px; }
+
+input[type='email'], input[type='password'] {
+  font: inherit;
+  padding: 9px 11px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+}
+input[type='email']:focus, input[type='password']:focus {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+input[type='file'] { font: inherit; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--acento);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--acento-hover); }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button.boton, a.boton { display: inline-block; }
+
+.pantalla-login {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.tarjeta-login { width: 100%; max-width: 360px; }
+.subtitulo { color: var(--gris); margin-bottom: 20px; font-size: 13px; }
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 960px;
+  margin: 24px auto;
+}
+
+.encabezado-tarjeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 24px;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+}
+.navbar .marca { font-weight: 700; color: var(--texto-h); margin-right: 8px; }
+.navbar .espaciador { flex: 1; }
+.navbar .usuario { color: var(--gris); font-size: 13px; }
+.navbar button { background: transparent; color: var(--gris); font-weight: 500; padding: 6px 10px; }
+.navbar button:hover { background: var(--fondo); color: var(--texto-h); }
+.navbar a.active { color: var(--acento-hover); font-weight: 600; }
+
+.contenedor { padding: 0 16px 40px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--borde); }
+th { color: var(--gris); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+.badge-gris { background: var(--gris); }
+.badge-azul { background: var(--azul); }
+.badge-verde { background: var(--verde); }
+.badge-rojo { background: var(--rojo); }
+.badge-ambar { background: var(--ambar); }
+
+.error {
+  color: var(--rojo);
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rojo) 30%, transparent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 10px 0;
+}
+
+.aviso { border-radius: 6px; padding: 12px 14px; margin-top: 16px; }
+.aviso-ok { background: color-mix(in srgb, var(--verde) 10%, transparent); border: 1px solid color-mix(in srgb, var(--verde) 30%, transparent); }
+.aviso-error { background: color-mix(in srgb, var(--rojo) 10%, transparent); border: 1px solid color-mix(in srgb, var(--rojo) 30%, transparent); }
+.aviso button { margin-top: 8px; }
+
+.form-subida { display: flex; align-items: center; gap: 12px; }
+
+dl.resumen {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+dl.resumen dt { color: var(--gris); }
+dl.resumen dd { margin: 0; }

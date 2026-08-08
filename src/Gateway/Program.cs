@@ -26,6 +26,20 @@ builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = limite
 builder.Services.AddAutenticacionJwt(builder.Configuration);
 
 // ---------------------------------------------------------------------------
+// CORS — solo acá: Gateway es la única puerta pública. El cliente React (Vite
+// dev, distinto puerto) está sujeto a same-origin policy y necesita el header
+// explícito; Postman no (no corre en un navegador). Nunca AllowAnyOrigin, y sin
+// AllowCredentials porque el JWT viaja en Authorization, no en cookies.
+// ---------------------------------------------------------------------------
+var origenesPermitidos = (builder.Configuration["Cors:OrigenesPermitidos"] ?? "http://localhost:5173")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+builder.Services.AddCors(o => o.AddPolicy("cliente-web", p => p
+    .WithOrigins(origenesPermitidos)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+// ---------------------------------------------------------------------------
 // Rate limiting (obligatorio). Particionado por `sub`: un usuario no consume la
 // cuota de otro. Sin token, la partición cae al IP de origen.
 // ---------------------------------------------------------------------------
@@ -77,6 +91,7 @@ builder.Services
 var app = builder.Build();
 app.UseServiceDefaults("Gateway");
 
+app.UseCors("cliente-web");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -125,14 +140,30 @@ internal static class Politicas
             MaxRequestBodySize = LimiteCuerpoAuth
         },
         // La subida: exige el permiso de carga y trae su propio techo de tamaño.
+        // Separada de la consulta (abajo) — antes una sola ruta exigía PoliticaCargaMasiva
+        // para TODO /cargas/{**resto}, así que el rol "consulta" (sin ese permiso, pero
+        // sí autenticado) recibía 403 al pedir su propio historial, aunque Control ya
+        // exige solo PoliticaAutenticado en sus GET (Control.Api/Program.cs). Encontrado
+        // al probar el cliente React con el usuario consulta@reto.local.
         new RouteConfig
         {
-            RouteId = "cargas",
+            RouteId = "cargas-subida",
             ClusterId = "control",
-            Match = new RouteMatch { Path = "/cargas/{**resto}" },
+            Match = new RouteMatch { Path = "/cargas", Methods = ["POST"] },
             AuthorizationPolicy = Autenticacion.PoliticaCargaMasiva,
             RateLimiterPolicy = LimiteCarga,
             MaxRequestBodySize = limiteTransporte
+        },
+        // Historial, detalle y descarga: cualquier usuario autenticado, igual que Control.
+        // Con LimitePorUsuario (60/min) y no LimiteCarga (10/min) — el polling del
+        // cliente web (cada 3 s) supera las 10/min de la cuota de subida.
+        new RouteConfig
+        {
+            RouteId = "cargas-consulta",
+            ClusterId = "control",
+            Match = new RouteMatch { Path = "/cargas/{**resto}", Methods = ["GET"] },
+            AuthorizationPolicy = Autenticacion.PoliticaAutenticado,
+            RateLimiterPolicy = LimitePorUsuario
         },
         // Diagnóstico de los servicios internos por la única puerta pública.
         new RouteConfig

@@ -67,6 +67,14 @@ explícitamente, pero el cliente DEBE poder mostrarlos (aparecen de verdad).
   origen(es) explícitos por configuración (`Cors:OrigenesPermitidos`, default
   `http://localhost:5173`) — nunca `AllowAnyOrigin`. Sin `AllowCredentials`: el
   cliente manda el JWT en `Authorization`, no en cookies, así que no lo necesita.
+- **`X-Frame-Options: DENY` en el dev server de Vite.** `design.md` §C14 también
+  había descartado CSP/X-Frame-Options "no hay página que clickjackear" — cierto
+  para las 5 APIs JSON, ya no para este cliente. Con un navegador real, un sitio
+  malicioso podría enmarcarlo en un `<iframe>` invisible y usar clickjacking
+  contra una acción autenticada simple (ej. "Cerrar sesión"). `frame-ancestors`
+  no es soportado vía `<meta>`; se agrega como header real en
+  `vite.config.ts` (`server.headers` + `preview.headers`), el único servidor
+  HTTP que este frontend usa hoy.
 
 ## Cambio de backend requerido (fuera del alcance de "solo frontend")
 

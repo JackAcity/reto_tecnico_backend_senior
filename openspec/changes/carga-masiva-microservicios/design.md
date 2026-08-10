@@ -121,9 +121,12 @@ transición a estado terminal `Fallida` con el error auditado. Trade-off declara
 RabbitMQ reentrega. Un lote insertado a medias más un crash duplica registros al
 reprocesar.
 
-**Resolución:** la restricción única sobre `CodigoProducto` actúa como llave natural
-de idempotencia (**Idempotent Consumer**, Richardson), reforzada por la comprobación
-de estado de la carga antes de procesar.
+**Resolución:** la restricción única compuesta `(Periodo, CodigoProducto)`
+(`ux_data_procesada_periodo_codigo`, §C5) actúa como llave natural de idempotencia
+(**Idempotent Consumer**, Richardson) vía `ON CONFLICT DO NOTHING`, reforzada por la
+comprobación de estado de la carga antes de procesar (`ManejadorCarga`: un mensaje
+reentregado de una carga que ya no está `Pendiente`/`EnProceso` se ignora en silencio,
+ni siquiera intenta reinsertar).
 
 ### C9 — Carrera de concurrencia en el periodo
 Dos cargas simultáneas del mismo periodo: `SELECT` y luego `INSERT` es un TOCTOU. Un
@@ -359,6 +362,56 @@ de criterio encuentra.
 — simula la interleaving ejecutando dos intentos de rotación atómica contra el
 mismo token todavía activo: el primero afecta 1 fila, el segundo 0, y
 `ReemplazadoPor` queda con el valor del primero, nunca pisado por el segundo.
+
+### C19 — El caso de uso vivía en Infrastructure, no en Application
+
+Hallazgo posterior a la entrega original (repaso de arquitectura antes de la
+entrevista), no parte del enunciado: `ManejadorCarga` — el caso de uso del
+§3️⃣ completo (descargar, leer, validar, insertar, auditar, avisar) — estaba
+en `CargaMasiva.Infrastructure`, no en `CargaMasiva.Application`, y
+construía su colaborador principal a mano: `new ProcesadorLote(reglas)`
+dentro del método, en vez de recibirlo inyectado. Contradecía directo la
+frase del propio README ("el dominio no sabe que Postgres, RabbitMQ o
+SeaweedFS existen — son detalles detrás de interfaces que Application
+define"): cierta para el dominio, falsa para este caso de uso puntual.
+
+**Dos violaciones, no una:**
+1. **Dependency Inversion Principle** — instanciar un colaborador con `new`
+   en vez de inyectarlo. `ManejadorCarga` ya inyectaba correctamente
+   `IAlmacenArchivos`/`IReglasCarga`/`IPublicador` (interfaces) pero rompía
+   su propio patrón con `ProcesadorLote` (`new` directo) y con
+   `LectorExcel` (mismo problema, no detectado hasta escribir el fix: sin
+   un puerto, mover `ManejadorCarga` a Application habría creado una
+   referencia circular Application→Infrastructure, error de compilación).
+2. **Capa equivocada** — el orquestador del caso de uso es, por definición,
+   responsabilidad de Application en Clean Architecture; Infrastructure
+   debería limitarse a adaptadores concretos (SQL, RabbitMQ, SeaweedFS,
+   ExcelDataReader) detrás de puertos que Application define.
+
+**Resolución:** `ManejadorCarga` se movió a `CargaMasiva.Application`.
+Se agregaron dos puertos nuevos, mismo patrón que `IReglasCarga`
+(definidos junto a su único consumidor, no en una carpeta `Interfaces/`
+aparte): `ILectorExcel` (implementado por `LectorExcel`, que sigue en
+Infrastructure con `ExcelDataReader`) e `IInsertadorMasivo` (implementado
+por `InsertadorMasivo`, que sigue en Infrastructure con Npgsql/`unnest`).
+`ProcesadorLote` pasa a inyectarse vía DI (`AddScoped<ProcesadorLote>()`)
+en vez de instanciarse a mano.
+
+**Límite honesto, no escondido:** `CargaMasiva.Application` ahora referencia
+`Persistencia`/`Almacenamiento`/`Mensajeria` (para `RetoDbContext`,
+`IAlmacenArchivos`, `IPublicador`) — proyectos compartidos que empaquetan
+interfaz e implementación concreta juntas (no hay `Almacenamiento.Abstractions`
+separado de `Almacenamiento.SeaweedFS`). Application deja de ser 100% libre
+de paquetes de infraestructura de forma transitiva. Separar esos proyectos
+compartidos en puerto/adaptador sería el siguiente paso hacia la pureza
+completa, pero es un refactor de otro tamaño (toca los cinco servicios que
+usan esos tres proyectos, no solo CargaMasiva) — fuera de alcance de este
+arreglo puntual, nombrado en vez de ignorado.
+
+**Verificado:** `dotnet build` sin errores en los 14 proyectos, 100/100
+tests siguen en verde, y una carga real corrida contra el contenedor
+reconstruido confirma que la cadena de inyección funciona en runtime, no
+solo en compilación.
 
 ## 3. Decisiones de librerías (y por qué)
 

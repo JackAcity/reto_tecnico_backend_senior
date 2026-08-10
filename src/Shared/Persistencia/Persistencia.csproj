@@ -5,6 +5,7 @@
          El dominio no tiene dependencias externas, así que apuntar hacia él
          no rompe la Regla de Dependencia (design.md §4). -->
     <ProjectReference Include="..\..\Services\CargaMasiva\CargaMasiva.Domain\CargaMasiva.Domain.csproj" />
+    <ProjectReference Include="..\..\Services\Auth\Auth.Domain\Auth.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

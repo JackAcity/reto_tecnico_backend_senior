@@ -1,5 +1,5 @@
 using Almacenamiento;
-using BuildingBlocks;
+using ServiceHost;
 using Control.Api;
 using Mensajeria;
 using Microsoft.AspNetCore.Http.Features;
@@ -12,6 +12,10 @@ builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Post
 builder.Services.AddAlmacenamiento(builder.Configuration);
 builder.Services.AddMensajeria(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);
+builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
+builder.Services.AddScoped<IConsultaCargas, ConsultaCargasEf>();
+builder.Services.AddScoped<IAlmacenCargas, AlmacenCargasSeaweedFs>();
+builder.Services.AddScoped<IPublicadorCargas, PublicadorCargasRabbit>();
 builder.Services.AddScoped<ServicioCargas>();   // comando: §2️⃣, escritura
 builder.Services.AddScoped<ConsultaCargas>();   // consulta: §5️⃣, solo lectura
 

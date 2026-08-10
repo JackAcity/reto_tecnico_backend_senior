@@ -1,0 +1,86 @@
+namespace Reto.Tests;
+
+/// <summary>
+/// Cierra guardia-arquitectura-dip (design.md §D5 de arquitectura-hexagonal-transversal):
+/// Application/Domain de ningún servicio referencia infraestructura concreta. Dos
+/// técnicas según el tipo de límite — reflection real donde las capas son ensamblados
+/// separados (CargaMasiva), escaneo de texto donde son carpetas dentro del mismo
+/// ensamblado (Auth, Control, Notificaciones: no hay límite de assembly que reflejar
+/// ahí). Sin dependencia nueva — <c>System.Reflection</c>/<c>System.IO</c> ya están.
+/// </summary>
+public sealed class GuardiaArquitecturaTests
+{
+    private static readonly string[] PaquetesProhibidos =
+        ["Microsoft.EntityFrameworkCore", "Npgsql", "RabbitMQ.Client"];
+
+    private static readonly string RaizRepo =
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+
+    private static string Proyecto(params string[] segmentos) => Path.Combine([RaizRepo, .. segmentos]);
+
+    [Theory]
+    [InlineData(typeof(CargaMasiva.Application.ManejadorCarga))]
+    [InlineData(typeof(CargaMasiva.Domain.EstadoCarga))]
+    [InlineData(typeof(Auth.Api.ServicioAutenticacion))]
+    [InlineData(typeof(Auth.Domain.Usuario))]
+    [InlineData(typeof(Control.Api.ServicioCargas))]
+    [InlineData(typeof(Notificaciones.Api.ManejadorNotificacion))]
+    public void NucleosYApplication_NoReferencianInfraestructuraConcreta(Type tipoDeMarca)
+    {
+        var referenciadas = tipoDeMarca.Assembly.GetReferencedAssemblies().Select(a => a.Name).ToList();
+
+        foreach (var prohibido in PaquetesProhibidos)
+            Assert.DoesNotContain(prohibido, referenciadas);
+    }
+
+    [Theory]
+    [InlineData("src/Services/CargaMasiva/CargaMasiva.Application/CargaMasiva.Application.csproj")]
+    [InlineData("src/Services/Auth/Auth.Application/Auth.Application.csproj")]
+    [InlineData("src/Services/Control/Control.Application/Control.Application.csproj")]
+    [InlineData("src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj")]
+    public void Application_NoReferenciaAdaptadoresCompartidos(string rutaProyecto)
+    {
+        var proyecto = File.ReadAllText(Path.Combine(RaizRepo, rutaProyecto.Replace('/', Path.DirectorySeparatorChar)));
+
+        Assert.DoesNotContain("Shared\\Almacenamiento", proyecto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shared\\Mensajeria", proyecto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shared\\Persistencia", proyecto, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mensajeria_NoReferenciaBuildingBlocks_Y_ElNucleoNoTieneFrameworks()
+    {
+        var mensajeria = File.ReadAllText(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj"));
+        var nucleo = File.ReadAllText(Proyecto("src", "BuildingBlocks", "BuildingBlocks.csproj"));
+
+        Assert.DoesNotContain("BuildingBlocks.csproj", mensajeria, StringComparison.Ordinal);
+        Assert.DoesNotContain("FrameworkReference", nucleo, StringComparison.Ordinal);
+        Assert.DoesNotContain("PackageReference", nucleo, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Auth", "Auth.Api")]
+    [InlineData("Control", "Control.Api")]
+    [InlineData("Notificaciones", "Notificaciones.Api")]
+    public void CarpetaApplication_NoContieneUsingsDeInfraestructuraConcreta(string carpetaServicio, string nombreProyecto)
+    {
+        var carpeta = Path.Combine(RaizRepo, "src", "Services", carpetaServicio, nombreProyecto, "Application");
+        Assert.True(Directory.Exists(carpeta), $"No se encontró {carpeta}");
+
+        foreach (var archivo in Directory.GetFiles(carpeta, "*.cs"))
+        {
+            var contenido = File.ReadAllText(archivo);
+            foreach (var prohibido in PaquetesProhibidos)
+                Assert.False(
+                    contenido.Contains($"using {prohibido}", StringComparison.Ordinal),
+                    $"{Path.GetFileName(archivo)} referencia infraestructura concreta: using {prohibido}");
+
+            Assert.DoesNotContain("using Almacenamiento;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Mensajeria;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Persistencia;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.AspNetCore.Identity;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.Extensions.Options;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.IdentityModel", contenido, StringComparison.Ordinal);
+        }
+    }
+}

@@ -1,3 +1,4 @@
+using Auth.Domain;
 using CargaMasiva.Domain;
 using Microsoft.EntityFrameworkCore;
 

@@ -17,8 +17,11 @@ documento es la entrega: arquitectura, decisiones, cómo levantar y cómo probar
 - **Gateway → Auth/Control → RabbitMQ → CargaMasiva → RabbitMQ → Notificaciones**,
   una Postgres compartida, SeaweedFS para el archivo. 5 microservicios, Clean
   Architecture en cada uno.
-- Excel leído en **streaming** (memoria acotada, no se carga el libro entero),
-  inserción **set-based** (`unnest`, un round trip) en vez de fila por fila.
+- El lector de Excel es forward-only, pero el caso de uso actual materializa el
+  lote para resolver reglas cruzadas: no se declara memoria constante. La
+  inserción sigue siendo **set-based** (`unnest`) en lotes de 20,000 filas;
+  mediciones, techo observado y trade-offs en
+  [`docs/pruebas-de-escala.md`](docs/pruebas-de-escala.md).
 - Test de aceptación determinista: `samples/carga_masiva_productos.xlsx` →
   **154 filas insertadas / 46 rechazadas**, reproducible con un comando.
 - **100 tests automatizados**, corridos contra contenedores reales — sin dobles
@@ -103,7 +106,7 @@ curl http://localhost:8080/cargas -H "Authorization: Bearer $TOKEN"
 prueba para Postgres/RabbitMQ/SeaweedFS, solo para llamadas HTTP salientes puntuales):
 
 ```bash
-dotnet test tests/CargaMasiva.Tests/CargaMasiva.Tests.csproj
+dotnet test tests/Reto.Tests/Reto.Tests.csproj
 ```
 
 **Cliente web (React, opcional — §2.1 del enunciado)** — las 4 pantallas exigidas

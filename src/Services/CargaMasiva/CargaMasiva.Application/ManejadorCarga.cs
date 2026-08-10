@@ -60,6 +60,14 @@ public sealed class ManejadorCarga(
         }
 
         await using var contenido = await almacen.DescargarAsync(mensaje.RutaArchivo, ct);
+
+        // ILectorExcel avanza hacia delante, pero este caso de uso materializa todas
+        // las filas porque ProcesadorLote recibe el lote completo para resolver
+        // períodos, duplicados y rechazos de forma consistente. Por tanto el
+        // pipeline actual es O(n) en memoria: "lector streaming" no significa
+        // "procesamiento streaming". La prueba real de 2M filas está documentada
+        // en docs/pruebas-de-escala.md; convertirlo a ventanas requeriría redefinir
+        // la coordinación de períodos y la auditoría, no reemplazar solo este ToList.
         var filas = lector.Leer(contenido).ToList();
 
         var resultadoLote = await procesadorLote.ProcesarAsync(carga.Id, filas, ct);
@@ -67,7 +75,10 @@ public sealed class ManejadorCarga(
 
         // Auditoría (§3.3c): rechazos de negocio + los ajustes de "valor por
         // defecto aplicado" (§2.4b) — no son un rechazo, pero el usuario debe
-        // poder verlos igual que cualquier otro motivo.
+        // poder verlos igual que cualquier otro motivo. Se persiste una fila por
+        // hallazgo: una carga de 2M rechazada genera 2M auditorías. Eso preserva
+        // trazabilidad, pero hace que pedir el total exacto de errores sea O(n);
+        // ConsultaCargasEf limita el payload, no el CountAsync que calcula ese total.
         repositorio.AgregarErrores(resultadoLote.Rechazadas.Concat(resultadoLote.Observaciones).Select(r =>
             new DetalleCargaError
             {

@@ -14,10 +14,11 @@ memoria constante en la generación:
 python scripts/generar_masivo.py 2000000 samples/carga_masiva_2M.xlsx
 ```
 
-Resultado: **2,000,000 filas, 49.7 MB**, ~7m48s en generarse. No se commitea
-(`.gitignore`) — se regenera con el comando de arriba. Periodos `2030-01`
-a `2030-12` (fuera del rango que usan los demás fixtures), código de producto
-único por fila para que el test mida inserción real y no duplicados.
+Resultado: **2,000,000 filas, 49.7 MB**, ~7m48s en generarse. El archivo de
+escala no se versiona; puede existir en el workspace de desarrollo y se
+regenera con el comando de arriba. Sus períodos son `2030-01` a `2030-12` y
+sus códigos son únicos por fila. Eso permite una corrida de inserción real
+solamente si esos períodos están libres al comenzar la prueba.
 
 ## Corrida 1 — reveló un bug real, no confirmó el diseño
 
@@ -113,10 +114,69 @@ atascado de la cola vía la API de management de RabbitMQ. Verificado
 después: stack completo healthy, **100/100 tests siguen en verde** — el
 incidente no dejó nada roto, solo agotó tiempo y memoria.
 
+## Corrida 4 — 2M filas contra períodos ya cargados (2026-08-10)
+
+Esta es una medición adicional, ejecutada después de separar las capas por
+DIP. No reemplaza la Corrida 2: mide deliberadamente el **camino de rechazo**,
+no la inserción exitosa.
+
+### Condiciones controladas
+
+- Archivo: `samples/carga_masiva_2M.xlsx`, **2,000,000 filas** y
+  **52,165,327 bytes** (49.75 MiB).
+- Stack: los 9 contenedores `healthy`, reconstruidos desde el código actual.
+- El límite normal de 25 MB habría rechazado el transporte. Para el benchmark
+  se sobreescribió **temporalmente** `CARGA_TAMANO_MAXIMO_MB=60` sólo en los
+  contenedores `control` y `gateway`; no se modificó `.env`, ni volúmenes, ni
+  el límite de entrega. Al terminar se recrearon ambos con el valor original
+  de **25 MB** y los 9 servicios volvieron a `healthy`.
+- Los períodos `2030-01` a `2030-12` ya existían como cargados en la base de
+  esa corrida. Por la regla de negocio cada fila se rechazó como
+  `PeriodoYaCargado`; por tanto `InsertadorMasivo` no participa en esta
+  medición.
+
+### Resultado medido
+
+| Tramo | Evidencia | Tiempo |
+|---|---|---:|
+| Aceptación y publicación del comando | `POST /cargas` respondió `201 Created`, `idCarga=179` | **6.211525 s** |
+| Procesamiento asíncrono | `carga_archivo.fecha_registro` → `fecha_fin` | **44.630308 s** |
+| Punta a punta aproximado | aceptación + estado terminal | **50.842 s** |
+| Tasa del camino de rechazo | 2,000,000 / 44.630308 | **44,813 filas/s** |
+
+El estado terminal fue `Rechazada`, con `totalFilas=2,000,000`,
+`filasInsertadas=0`, `filasRechazadas=2,000,000` y **2,000,000** registros
+en `detalle_carga_error`. Se verificó un error de muestra: fila 2,
+período `2030-11`, motivo `PeriodoYaCargado`.
+
+No se reporta pico de CPU o memoria en esta corrida: no se ejecutó un sampler
+durante la ventana de 44.63 s. Inventar un pico a partir del estado final de
+los contenedores sería engañoso.
+
+### Hallazgo de lectura: el detalle no escala con `totalErrores` exacto
+
+`GET /cargas/179?limiteErrores=1` no respondió antes de **60 s**. El problema
+no es serializar un millón de errores —`Take(limiteErrores)` conserva un
+payload pequeño— sino el contrato actual del detalle: primero ejecuta
+`CountAsync` para devolver `totalErrores` exacto y después lee la página de
+errores. Existe el índice
+`ix_detalle_carga_error_carga_archivo_id`, que evita mirar errores de otras
+cargas; aun así contar los 2M registros de esta carga es trabajo O(n).
+
+Consecuencia operativa: el cliente debe hacer polling con `GET /cargas`
+(`HistorialAsync`), que sólo lee el resumen, y reservar el detalle para una
+consulta puntual. Si el producto necesitara un detalle fluido para rechazos
+masivos, las alternativas son (a) mantener el contador al escribir, o (b)
+usar paginación/cursor sin exigir el total exacto. Ambas cambian el contrato y
+deben diseñarse y probarse como un cambio separado; no se implementan aquí.
+
 ## Dónde está el techo real (con este equipo)
 
-- **2M filas**: bien. 3m43s, memoria acotada (~1.4-2.4 GiB), termina
-  `Finalizado`.
+- **2M filas**: la Corrida 2 terminó `Finalizado` en 3m43s (inserción real) y
+  midió ~1.4-2.4 GiB; cabe en este equipo, pero no es memoria constante. En
+  la Corrida 4, el mismo volumen terminó `Rechazada` en 44.63 s porque los
+  períodos ya estaban cargados; esa tasa no representa throughput de
+  inserción.
 - **5M filas**: mal. Nunca termina — OOM-kill en loop, hay que intervenir
   a mano para pararlo.
 - El techo está en algún punto entre esos dos, en **este** equipo (VM de
@@ -141,12 +201,23 @@ enunciado o un caso de uso real pida archivos de ese tamaño.
 
 ```bash
 python scripts/generar_masivo.py 2000000 samples/carga_masiva_2M.xlsx
-# .env: CARGA_TAMANO_MAXIMO_MB=250 (temporal)
-docker compose up -d --wait
-# login, POST /cargas con el archivo, poll GET /cargas/{id}
-# .env: CARGA_TAMANO_MAXIMO_MB=25 (revertir)
-docker compose up -d --wait
 ```
+
+En PowerShell, subir temporalmente el límite sin editar `.env` y restaurarlo
+al terminar:
+
+```powershell
+$env:CARGA_TAMANO_MAXIMO_MB = '60'
+docker compose up -d --force-recreate control gateway
+Remove-Item Env:CARGA_TAMANO_MAXIMO_MB
+
+# login, POST /cargas con el archivo; para polling usar GET /cargas
+docker compose up -d --force-recreate control gateway   # vuelve a 25 MB (.env)
+```
+
+Para medir inserción real, ejecutar contra una base/volumen aislado o contra
+períodos que no estén cargados. No reutilizar una base que ya contenga
+`2030-01` a `2030-12`: se mediría el camino de rechazo de la Corrida 4.
 
 Para reproducir la Corrida 3 (5M, cuidado — entra en el OOM-loop descrito
 arriba, tener `docker compose stop cargamasiva` a mano): mismo procedimiento

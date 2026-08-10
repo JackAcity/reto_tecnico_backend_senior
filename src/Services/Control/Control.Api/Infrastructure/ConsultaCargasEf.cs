@@ -26,7 +26,13 @@ public sealed class ConsultaCargasEf(RetoDbContext db) : IConsultaCargas
         if (carga is null)
             return null;
 
-        // El detalle de errores puede ser grande: se acota y se informa el total.
+        // El payload se acota con Take, pero el contrato expone totalErrores exacto
+        // y CountAsync debe recorrer todas las coincidencias. La prueba real de una
+        // carga con 2M errores superó 60 s incluso con limiteErrores=1; el índice por
+        // carga_archivo_id evita escanear otras cargas, pero no elimina el coste de
+        // contar 2M filas propias. El polling debe usar HistorialAsync. Cambiar a un
+        // contador mantenido al escribir o a paginación sin total exacto alteraría el
+        // contrato y exige una decisión explícita, no una optimización oculta aquí.
         var totalErrores = await db.DetalleCargaErrores.CountAsync(e => e.CargaArchivoId == idCarga, ct);
         var errores = await db.DetalleCargaErrores
             .AsNoTracking()

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
-namespace BuildingBlocks;
+namespace ServiceHost;
 
 /// <summary>
 /// Validación de JWT y políticas, compartidas por el gateway y por Control.
@@ -24,9 +24,6 @@ public static class Autenticacion
         servicios.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(o =>
             {
-                // Sin el mapeo heredado los claims conservan su nombre original
-                // ("sub", "role", "permiso"), que es como se emiten y como los lee
-                // el particionado del rate limiter.
                 o.MapInboundClaims = false;
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -46,7 +43,6 @@ public static class Autenticacion
 
         servicios.AddAuthorizationBuilder()
             .AddPolicy(PoliticaAutenticado, p => p.RequireAuthenticatedUser())
-            // §3.2a — no basta con estar autenticado: hay que tener el permiso de carga.
             .AddPolicy(PoliticaCargaMasiva, p => p
                 .RequireAuthenticatedUser()
                 .RequireClaim(ClaimPermiso, PermisoCargaMasiva));

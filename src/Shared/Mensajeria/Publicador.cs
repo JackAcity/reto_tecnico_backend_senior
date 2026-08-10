@@ -1,5 +1,4 @@
 using System.Text.Json;
-using BuildingBlocks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,20 +8,6 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 
 namespace Mensajeria;
-
-public interface IPublicador
-{
-    /// <summary>
-    /// Publica y espera la confirmación del broker. Un fallo de infraestructura
-    /// esperado (broker caído, routing key sin cola vinculada — ver
-    /// <see cref="PublicadorRabbit"/>) se comunica como <c>Resultado.Fallo(...)</c>,
-    /// no como excepción (design.md §D4 de arquitectura-hexagonal-transversal) — el
-    /// llamador ya debe tratar un <c>Resultado</c> fallido como "no se pudo encolar"
-    /// (§C7). Una excepción que sí se propaga desde este método es un bug, no un
-    /// fallo esperado.
-    /// </summary>
-    Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default);
-}
 
 /// <summary>
 /// Publicador con <b>publisher confirms</b>. Con <c>publisherConfirmationTrackingEnabled</c>
@@ -41,7 +26,7 @@ public interface IPublicador
 /// se devolvió, sin tener que parsear el texto de la excepción.
 /// </summary>
 public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
-    : IPublicador, IAsyncDisposable
+    : IAsyncDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -50,7 +35,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
     private IConnection? _conexion;
     private IChannel? _canal;
 
-    public async Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
+    public async Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
     {
         try
         {
@@ -71,15 +56,10 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
                 Topologia.Exchange, routingKey, mandatory: true, propiedades,
                 JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
 
-            return Resultado.Exito();
         }
         catch (RabbitMQClientException ex)
         {
-            // Fallo de infraestructura esperado (broker caído, routing key sin cola
-            // vinculada — PublishReturnException). Cualquier otra excepción (un bug
-            // real de serialización, por ejemplo) no es de este tipo y se propaga
-            // sin capturarse (design.md §D4).
-            return Resultado.Fallo(ex.Message);
+            throw new FalloPublicacionRabbitException(ex.Message, ex);
         }
     }
 
@@ -135,12 +115,16 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
     }
 }
 
+/// <summary>Fallo esperado del transporte RabbitMQ, traducido por el adaptador local.</summary>
+public sealed class FalloPublicacionRabbitException(string mensaje, Exception interna)
+    : Exception(mensaje, interna);
+
 public static class MensajeriaExtensiones
 {
     public static IServiceCollection AddMensajeria(this IServiceCollection servicios, IConfiguration config)
     {
         servicios.Configure<OpcionesRabbit>(config.GetSection("RabbitMq"));
-        servicios.AddSingleton<IPublicador, PublicadorRabbit>();
+        servicios.AddSingleton<PublicadorRabbit>();
         return servicios;
     }
 }

@@ -1,4 +1,5 @@
 using CargaMasiva.Application;
+using CargaMasiva.Domain;
 using Microsoft.EntityFrameworkCore;
 using Persistencia;
 

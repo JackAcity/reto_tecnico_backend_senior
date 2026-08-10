@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.csproj" />
+    <Project Path="src/ServiceHost/ServiceHost.csproj" />
     <Project Path="src/Gateway/Gateway.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />

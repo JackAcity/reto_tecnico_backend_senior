@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BuildingBlocks;
+using ServiceHost;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 

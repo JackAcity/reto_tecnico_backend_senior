@@ -1,8 +1,6 @@
-using Almacenamiento;
 using BuildingBlocks;
 using CargaMasiva.Application;
 using CargaMasiva.Domain;
-using Mensajeria;
 using Microsoft.Extensions.Logging.Abstractions;
 using Persistencia;
 
@@ -28,12 +26,9 @@ file sealed class RepositorioCargasFalso(CargaArchivo carga) : IRepositorioCarga
     }
 }
 
-file sealed class AlmacenFalso : IAlmacenArchivos
+file sealed class AlmacenFalso : IAlmacenCarga
 {
-    public Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct = default) =>
-        throw new NotSupportedException("ManejadorCarga solo descarga.");
-
-    public Task<Stream> DescargarAsync(string ruta, CancellationToken ct = default) =>
+    public Task<Stream> DescargarAsync(string ruta, CancellationToken ct) =>
         Task.FromResult<Stream>(new MemoryStream());
 }
 
@@ -57,13 +52,13 @@ file sealed class ReglasEnMemoria(ResultadoPeriodo veredicto = ResultadoPeriodo.
         Task.FromResult<IReadOnlySet<ClaveProducto>>(new HashSet<ClaveProducto>());
 }
 
-file sealed class PublicadorFalso : IPublicador
+file sealed class PublicadorFalso : IPublicadorNotificacion
 {
-    public List<string> RoutingKeysPublicados { get; } = [];
+    public List<MensajeNotificacion> NotificacionesPublicadas { get; } = [];
 
-    public Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
+    public Task<Resultado> PublicarAsync(MensajeNotificacion mensaje, string correlationId, CancellationToken ct)
     {
-        RoutingKeysPublicados.Add(routingKey);
+        NotificacionesPublicadas.Add(mensaje);
         return Task.FromResult(Resultado.Exito());
     }
 }
@@ -101,7 +96,7 @@ public sealed class ManejadorCargaTests
         Assert.True(resultado.EsExitoso);
         Assert.Equal(EstadoCarga.Finalizado, resultado.Valor);
         Assert.Equal(0, repositorio.GuardadosLlamados);
-        Assert.Empty(publicador.RoutingKeysPublicados);
+        Assert.Empty(publicador.NotificacionesPublicadas);
     }
 
     [Fact]
@@ -120,7 +115,7 @@ public sealed class ManejadorCargaTests
         Assert.True(resultado.EsExitoso);
         Assert.Equal(EstadoCarga.Finalizado, resultado.Valor);
         Assert.True(repositorio.GuardadosLlamados >= 2);   // transición a EnProceso + transición final
-        Assert.Equal([Topologia.RkNotificacion], publicador.RoutingKeysPublicados);
+        Assert.Single(publicador.NotificacionesPublicadas);
     }
 
     [Fact]
@@ -138,6 +133,6 @@ public sealed class ManejadorCargaTests
 
         Assert.True(resultado.EsExitoso);
         Assert.Equal(EstadoCarga.Rechazada, resultado.Valor);
-        Assert.Empty(publicador.RoutingKeysPublicados);
+        Assert.Empty(publicador.NotificacionesPublicadas);
     }
 }

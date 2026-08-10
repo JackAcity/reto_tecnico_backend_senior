@@ -1,4 +1,4 @@
-using Persistencia;
+using CargaMasiva.Domain;
 
 namespace CargaMasiva.Application;
 

@@ -42,19 +42,17 @@ public sealed class PublicadorRabbitTests : IAsyncLifetime
     /// <summary>
     /// Comportamiento real de RabbitMQ.Client 7.2.2 (no una suposición): con
     /// publisherConfirmationTrackingEnabled, un routing key sin cola vinculada NO
-    /// se pierde en silencio — el cliente lanza PublishReturnException, que
-    /// PublicarAsync atrapa y traduce a Resultado.Fallo (design.md §D4). Esto es
-    /// lo que hace que la rama explícita de ServicioCargas.RegistrarAsync (§C7)
-    /// funcione de punta a punta: la carga pasa a Fallida en vez de quedar
-    /// colgada en Pendiente creyendo que el mensaje se encoló.
+    /// se pierde en silencio — el cliente lanza PublishReturnException. El cliente
+    /// técnico la normaliza a FalloPublicacionRabbitException para que el adaptador
+    /// local de cada caso de uso la traduzca a su Resultado.
     /// </summary>
     [Fact]
     public async Task RoutingKeySinColaVinculada_HaceFallarLaPublicacion()
     {
-        var resultado = await _publicador.PublicarAsync("ruta.que.no.existe.en.ningun.binding", new { x = 1 }, "test-return");
+        var exception = await Assert.ThrowsAsync<FalloPublicacionRabbitException>(() =>
+            _publicador.PublicarAsync("ruta.que.no.existe.en.ningun.binding", new { x = 1 }, "test-return"));
 
-        Assert.False(resultado.EsExitoso);
-        Assert.Contains("ruta.que.no.existe.en.ningun.binding", resultado.Error);
+        Assert.Contains("ruta.que.no.existe.en.ningun.binding", exception.Message);
     }
 
     /// <summary>
@@ -66,7 +64,8 @@ public sealed class PublicadorRabbitTests : IAsyncLifetime
     [Fact]
     public async Task RoutingKeySinColaVinculada_TambienQuedaLogueadaConCamposEstructurados()
     {
-        await _publicador.PublicarAsync("otra.ruta.sin.binding", new { x = 1 }, "test-return");   // resultado ya cubierto por el otro test
+        await Assert.ThrowsAsync<FalloPublicacionRabbitException>(() =>
+            _publicador.PublicarAsync("otra.ruta.sin.binding", new { x = 1 }, "test-return"));
 
         var limite = DateTime.UtcNow.AddSeconds(5);
         while (_logger.Entradas.Count == 0 && DateTime.UtcNow < limite)

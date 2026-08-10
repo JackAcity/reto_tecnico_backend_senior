@@ -1,3 +1,4 @@
+using CargaMasiva.Domain;
 using Persistencia;
 
 namespace Control.Api;

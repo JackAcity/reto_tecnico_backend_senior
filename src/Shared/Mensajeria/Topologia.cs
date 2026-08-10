@@ -1,7 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using BuildingBlocks;
 using RabbitMQ.Client;
 
 namespace Mensajeria;
@@ -15,22 +11,16 @@ public sealed class OpcionesRabbit
     /// <summary>Espera antes de reintentar un lote que falló, en segundos.</summary>
     public int ReintentoSegundos { get; set; } = 30;
 
-    /// <summary>
-    /// Sin valores por defecto para host/usuario/password: "rabbitmq"/"guest"/"guest"
-    /// siempre funcionaban en docker-compose (.env los inyecta), y por eso mismo
-    /// escondían el error si algún día un servicio corre suelto sin configurar nada
-    /// — guest/guest en particular es la credencial insegura de fábrica de RabbitMQ.
-    /// <c>ExcepcionDeConfiguracion</c> (no <c>InvalidOperationException</c> pelada):
-    /// esta validación corre en <c>PublicadorRabbit.CanalAsync</c>, alcanzable
-    /// dentro de un request HTTP en curso (clasificacion-excepciones-config).
-    /// </summary>
     public void Validar()
     {
-        if (string.IsNullOrWhiteSpace(Host)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Host.");
-        if (string.IsNullOrWhiteSpace(Usuario)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Usuario.");
-        if (string.IsNullOrWhiteSpace(Password)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Password.");
+        if (string.IsNullOrWhiteSpace(Host)) throw new ConfiguracionMensajeriaException("Falta RabbitMq:Host.");
+        if (string.IsNullOrWhiteSpace(Usuario)) throw new ConfiguracionMensajeriaException("Falta RabbitMq:Usuario.");
+        if (string.IsNullOrWhiteSpace(Password)) throw new ConfiguracionMensajeriaException("Falta RabbitMq:Password.");
     }
 }
+
+/// <summary>Configuración inválida del adaptador RabbitMQ; el borde HTTP la trata como 500.</summary>
+public sealed class ConfiguracionMensajeriaException(string mensaje) : Exception(mensaje);
 
 /// <summary>
 /// Un exchange topic y dos colas — el mínimo que el enunciado evalúa — más el
@@ -125,32 +115,4 @@ public static class Topologia
         string s => s,
         _ => null
     };
-}
-
-/// <summary>
-/// Contratos literales del enunciado (§2️⃣ y §3️⃣). El <c>CorrelationId</c> no se
-/// mete acá: viaja como cabecera AMQP para no alterar el JSON que el enunciado
-/// define palabra por palabra (design.md §M2).
-/// </summary>
-public sealed record MensajeCarga(int IdCarga, string RutaArchivo, string Usuario);
-
-public sealed record MensajeNotificacion(
-    int IdCarga, string Usuario,
-    [property: JsonConverter(typeof(FechaFinJsonConverter))] DateTimeOffset FechaFin);
-
-/// <summary>
-/// El ejemplo del enunciado (§3️⃣) es literal: <c>"2025-02-10T10:20:00"</c> — sin
-/// offset ni decimales. El converter por defecto de DateTimeOffset sí los agrega
-/// (formato "round-trip"); sin este converter, el campo tiene el nombre correcto
-/// pero no el formato exacto que matriz-requisitos.md marca como obligatorio (§3.3g).
-/// </summary>
-internal sealed class FechaFinJsonConverter : JsonConverter<DateTimeOffset>
-{
-    private const string Formato = "yyyy-MM-ddTHH:mm:ss";
-
-    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-        DateTimeOffset.Parse(reader.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
-
-    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
-        writer.WriteStringValue(value.UtcDateTime.ToString(Formato, CultureInfo.InvariantCulture));
 }

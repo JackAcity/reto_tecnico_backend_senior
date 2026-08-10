@@ -126,19 +126,25 @@ public readonly struct Resultado   // variante sin valor, para operaciones sin r
 }
 ```
 
-Vive en `src/BuildingBlocks` (compartido por los 5 servicios, igual que
-`ServiceDefaults`).
+Vive en `src/BuildingBlocks`, que queda como núcleo compartido sin paquetes ni
+referencias de framework. La configuración HTTP, JWT, Serilog y el manejador
+global de excepciones viven en `src/ServiceHost`: son composición de host, no
+una dependencia del núcleo.
 
-### D4 — Dónde se aplica `Resultado<T>`: `IPublicador` y `ManejadorCarga`
+### D4 — Dónde se aplica `Resultado<T>`: puertos de publicación y `ManejadorCarga`
 
-`IPublicador.PublicarAsync` cambia de `Task` (lanza al fallar) a
-`Task<Resultado>`. Esto cierra el hallazgo concreto de la auditoría:
+Los puertos de publicación viven en cada Application y se expresan en términos
+del mensaje que cada caso de uso necesita; los adaptadores RabbitMQ viven fuera
+de Application. El cliente técnico de RabbitMQ normaliza solo su fallo esperado
+para que cada adaptador local lo traduzca a `Resultado`. Esto cierra el hallazgo
+concreto de la auditoría:
 
-- **`ServicioCargas.RegistrarAsync`**: el `catch (Exception ex)` genérico se
-  reemplaza por una rama explícita sobre `resultado.EsExitoso`. Mismo
+- **`ServicioCargas.RegistrarAsync`**: `IPublicadorCargas` entrega un resultado
+  explícito al caso de uso; una rama sobre `resultado.EsExitoso` conserva el
+  mismo
   comportamiento observable (carga queda `Fallida`, se devuelve
   `ResultadoRegistro` con `Error`), pero ya no puede confundir un bug real
-  dentro de `IPublicador` con un fallo esperado de infraestructura — un bug
+  dentro del adaptador de publicación con un fallo esperado de infraestructura — un bug
   ahora sí se propaga como excepción no controlada.
 - **`ManejadorCarga.ProcesarAsync`** (publicación final a la cola de
   notificación): pasa de "dejar que la excepción suba y RabbitMQ reintente"

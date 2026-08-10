@@ -1,9 +1,7 @@
 using System.Text;
-using Almacenamiento;
 using BuildingBlocks;
 using CargaMasiva.Domain;
 using Control.Api;
-using Mensajeria;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
@@ -11,13 +9,10 @@ using Persistencia;
 
 namespace Reto.Tests;
 
-file sealed class AlmacenFalso : IAlmacenArchivos
+file sealed class AlmacenFalso : IAlmacenCargas
 {
-    public Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct = default) =>
+    public Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct) =>
         Task.FromResult($"seaweed://cargas/prueba/{nombreArchivo}");
-
-    public Task<Stream> DescargarAsync(string ruta, CancellationToken ct = default) =>
-        Task.FromResult<Stream>(new MemoryStream());
 }
 
 /// <summary>
@@ -25,11 +20,11 @@ file sealed class AlmacenFalso : IAlmacenArchivos
 /// design.md §D4). <paramref name="bugInesperado"/> simula un bug real ajeno a la
 /// publicación — debe propagarse como excepción, no confundirse con lo anterior.
 /// </summary>
-file sealed class PublicadorFalso(bool falla = false, bool bugInesperado = false) : IPublicador
+file sealed class PublicadorFalso(bool falla = false, bool bugInesperado = false) : IPublicadorCargas
 {
-    public List<(string RoutingKey, object Mensaje, string CorrelationId)> Publicados { get; } = [];
+    public List<(MensajeCarga Mensaje, string CorrelationId)> Publicados { get; } = [];
 
-    public Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
+    public Task<Resultado> PublicarAsync(MensajeCarga mensaje, string correlationId, CancellationToken ct)
     {
         if (bugInesperado)
             throw new NullReferenceException("bug simulado, no relacionado con el fallo de publicación");
@@ -37,7 +32,7 @@ file sealed class PublicadorFalso(bool falla = false, bool bugInesperado = false
         if (falla)
             return Task.FromResult(Resultado.Fallo("broker caído"));
 
-        Publicados.Add((routingKey, mensaje!, correlationId));
+        Publicados.Add((mensaje, correlationId));
         return Task.FromResult(Resultado.Exito());
     }
 }
@@ -75,7 +70,7 @@ public sealed class RegistroDeCargaTests : IAsyncLifetime
         await _cn.DisposeAsync();
     }
 
-    private ServicioCargas Servicio(IPublicador publicador) =>
+    private ServicioCargas Servicio(IPublicadorCargas publicador) =>
         new(new RepositorioCargasEf(_db), new AlmacenFalso(), publicador, NullLogger<ServicioCargas>.Instance);
 
     private static Stream Contenido() => new MemoryStream(Encoding.UTF8.GetBytes("contenido de prueba"));
@@ -91,16 +86,14 @@ public sealed class RegistroDeCargaTests : IAsyncLifetime
         Assert.Null(resultado.Error);
         Assert.Equal(nameof(EstadoCarga.Pendiente), resultado.Estado);
 
-        var (routingKey, mensaje, correlationId) = Assert.Single(publicador.Publicados);
-        Assert.Equal(Topologia.RkCarga, routingKey);
+        var (mensaje, correlationId) = Assert.Single(publicador.Publicados);
         Assert.Equal("corr-1", correlationId);
 
         // El contrato es literal (§2️⃣): idCarga, rutaArchivo, usuario. El
         // correlationId viaja aparte, como cabecera AMQP.
-        var carga = Assert.IsType<MensajeCarga>(mensaje);
-        Assert.Equal(resultado.IdCarga, carga.IdCarga);
-        Assert.Equal("admin@reto.local", carga.Usuario);
-        Assert.StartsWith("seaweed://", carga.RutaArchivo);
+        Assert.Equal(resultado.IdCarga, mensaje.IdCarga);
+        Assert.Equal("admin@reto.local", mensaje.Usuario);
+        Assert.StartsWith("seaweed://", mensaje.RutaArchivo);
     }
 
     [Fact]

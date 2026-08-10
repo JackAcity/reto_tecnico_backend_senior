@@ -1,6 +1,5 @@
-using Almacenamiento;
+using BuildingBlocks;
 using CargaMasiva.Domain;
-using Mensajeria;
 using Persistencia;
 
 namespace Control.Api;
@@ -15,6 +14,18 @@ public interface IRepositorioCargas
     Task GuardarCambiosAsync(CancellationToken ct);
 }
 
+/// <summary>Puerto de almacenamiento que necesita el caso de uso de registro.</summary>
+public interface IAlmacenCargas
+{
+    Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct);
+}
+
+/// <summary>Publica el comando de procesamiento de una carga recién registrada.</summary>
+public interface IPublicadorCargas
+{
+    Task<Resultado> PublicarAsync(MensajeCarga mensaje, string correlationId, CancellationToken ct);
+}
+
 public sealed record ResultadoRegistro(int IdCarga, string Estado, string? Error = null);
 
 /// <summary>
@@ -25,8 +36,8 @@ public sealed record ResultadoRegistro(int IdCarga, string Estado, string? Error
 /// </summary>
 public sealed class ServicioCargas(
     IRepositorioCargas repositorio,
-    IAlmacenArchivos almacen,
-    IPublicador publicador,
+    IAlmacenCargas almacen,
+    IPublicadorCargas publicador,
     ILogger<ServicioCargas> log)
 {
     public const string ExtensionPermitida = ".xlsx";
@@ -102,7 +113,7 @@ public sealed class ServicioCargas(
         // comunica como Resultado.Fallo; un bug real dentro de IPublicador se
         // propaga como excepción no controlada, no se confunde con esto.
         var resultado = await publicador.PublicarAsync(
-            Topologia.RkCarga, new MensajeCarga(carga.Id, ruta, usuario), correlationId, ct);
+            new MensajeCarga(carga.Id, ruta, usuario), correlationId, ct);
 
         if (!resultado.EsExitoso)
         {

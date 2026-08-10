@@ -1,5 +1,5 @@
 using Auth.Api;
-using BuildingBlocks;
+using ServiceHost;
 using Persistencia;
 
 var builder = WebApplication.CreateBuilder(args);

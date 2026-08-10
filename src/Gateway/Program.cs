@@ -1,5 +1,5 @@
 using System.Threading.RateLimiting;
-using BuildingBlocks;
+using ServiceHost;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using Yarp.ReverseProxy.Configuration;

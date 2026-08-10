@@ -1,4 +1,4 @@
-using BuildingBlocks;
+using ServiceHost;
 
 namespace Reto.Tests;
 

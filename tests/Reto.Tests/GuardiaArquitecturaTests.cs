@@ -16,6 +16,8 @@ public sealed class GuardiaArquitecturaTests
     private static readonly string RaizRepo =
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
+    private static string Proyecto(params string[] segmentos) => Path.Combine([RaizRepo, .. segmentos]);
+
     [Theory]
     [InlineData(typeof(CargaMasiva.Application.ManejadorCarga))]
     [InlineData(typeof(CargaMasiva.Domain.EstadoCarga))]
@@ -25,6 +27,27 @@ public sealed class GuardiaArquitecturaTests
 
         foreach (var prohibido in PaquetesProhibidos)
             Assert.DoesNotContain(prohibido, referenciadas);
+    }
+
+    [Fact]
+    public void CargaMasiva_Application_NoReferenciaAdaptadoresCompartidos()
+    {
+        var proyecto = File.ReadAllText(Proyecto("src", "Services", "CargaMasiva", "CargaMasiva.Application", "CargaMasiva.Application.csproj"));
+
+        Assert.DoesNotContain("Shared\\Almacenamiento", proyecto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shared\\Mensajeria", proyecto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shared\\Persistencia", proyecto, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mensajeria_NoReferenciaBuildingBlocks_Y_ElNucleoNoTieneFrameworks()
+    {
+        var mensajeria = File.ReadAllText(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj"));
+        var nucleo = File.ReadAllText(Proyecto("src", "BuildingBlocks", "BuildingBlocks.csproj"));
+
+        Assert.DoesNotContain("BuildingBlocks.csproj", mensajeria, StringComparison.Ordinal);
+        Assert.DoesNotContain("FrameworkReference", nucleo, StringComparison.Ordinal);
+        Assert.DoesNotContain("PackageReference", nucleo, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -43,6 +66,9 @@ public sealed class GuardiaArquitecturaTests
                 Assert.False(
                     contenido.Contains($"using {prohibido}", StringComparison.Ordinal),
                     $"{Path.GetFileName(archivo)} referencia infraestructura concreta: using {prohibido}");
+
+            Assert.DoesNotContain("using Almacenamiento;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Mensajeria;", contenido, StringComparison.Ordinal);
         }
     }
 }

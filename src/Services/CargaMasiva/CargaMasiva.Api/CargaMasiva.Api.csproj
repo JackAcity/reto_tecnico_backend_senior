@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CargaMasiva.Infrastructure\CargaMasiva.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\ServiceHost\ServiceHost.csproj" />
     <ProjectReference Include="..\..\..\Shared\Mensajeria\Mensajeria.csproj" />
     <ProjectReference Include="..\..\..\Shared\Persistencia\Persistencia.csproj" />
   </ItemGroup>

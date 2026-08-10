@@ -16,14 +16,24 @@ public sealed class ResultadoTests
     }
 
     [Fact]
-    public void Fallo_expone_error_y_ningun_valor()
+    public void Fallo_expone_error_y_no_permite_leer_un_valor()
     {
         var resultado = Resultado<int>.Fallo("no se pudo procesar");
 
         Assert.False(resultado.EsExitoso);
-        Assert.Equal(0, resultado.Valor);
+        Assert.Throws<InvalidOperationException>(() => _ = resultado.Valor);
         Assert.Equal("no se pudo procesar", resultado.Error);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Fallo_rechaza_errores_vacios(string error) =>
+        Assert.Throws<ArgumentException>(() => Resultado.Fallo(error));
+
+    [Fact]
+    public void Exito_rechaza_valor_nulo() =>
+        Assert.Throws<ArgumentNullException>(() => Resultado<string>.Exito(null!));
 
     [Fact]
     public void Resultado_sin_valor_exito()

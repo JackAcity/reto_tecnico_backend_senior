@@ -1,5 +1,5 @@
 using CargaMasiva.Domain;
-using Mensajeria;
+using BuildingBlocks;
 using Persistencia;
 
 namespace Notificaciones.Api;

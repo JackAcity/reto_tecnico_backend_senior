@@ -1,9 +1,6 @@
-using Almacenamiento;
 using BuildingBlocks;
 using CargaMasiva.Domain;
-using Mensajeria;
 using Microsoft.Extensions.Logging;
-using Persistencia;
 
 namespace CargaMasiva.Application;
 
@@ -22,8 +19,8 @@ public interface IInsertadorMasivo
 /// <summary>
 /// El caso de uso del §3️⃣: descargar, leer, validar, insertar, auditar y avisar.
 /// Vive en Application (no en Infrastructure, donde estaba antes) porque ES el caso
-/// de uso — orquesta sobre puertos (<see cref="IAlmacenArchivos"/>, <see cref="ILectorExcel"/>,
-/// <see cref="IInsertadorMasivo"/>, <see cref="IPublicador"/>, <see cref="IRepositorioCargas"/>),
+/// de uso — orquesta sobre puertos (<see cref="IAlmacenCarga"/>, <see cref="ILectorExcel"/>,
+/// <see cref="IInsertadorMasivo"/>, <see cref="IPublicadorNotificacion"/>, <see cref="IRepositorioCargas"/>),
 /// nunca sobre la librería concreta detrás de cada uno (design.md §D1 de
 /// arquitectura-hexagonal-transversal). <see cref="ProcesadorLote"/> se inyecta, no se
 /// instancia acá adentro — instanciar un colaborador a mano es la misma violación de
@@ -31,11 +28,11 @@ public interface IInsertadorMasivo
 /// </summary>
 public sealed class ManejadorCarga(
     IRepositorioCargas repositorio,
-    IAlmacenArchivos almacen,
+    IAlmacenCarga almacen,
     ILectorExcel lector,
     ProcesadorLote procesadorLote,
     IInsertadorMasivo insertador,
-    IPublicador publicador,
+    IPublicadorNotificacion publicador,
     ILogger<ManejadorCarga> log)
 {
     /// <summary>
@@ -127,9 +124,7 @@ public sealed class ManejadorCarga(
         // ya tuvo éxito. Se audita con LogWarning; un bug real dentro de
         // IPublicador (no un Resultado.Fallo) sigue propagándose como excepción.
         var resultadoPublicacion = await publicador.PublicarAsync(
-            Topologia.RkNotificacion,
-            new MensajeNotificacion(carga.Id, carga.Usuario, carga.FechaFin!.Value),
-            correlationId, ct);
+            new MensajeNotificacion(carga.Id, carga.Usuario, carga.FechaFin!.Value), correlationId, ct);
 
         if (!resultadoPublicacion.EsExitoso)
             log.LogWarning("No se pudo publicar la notificación de la carga {IdCarga}: {Error}", carga.Id, resultadoPublicacion.Error);

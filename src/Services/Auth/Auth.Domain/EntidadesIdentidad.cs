@@ -1,8 +1,6 @@
-using CargaMasiva.Domain;
+namespace Auth.Domain;
 
-namespace Persistencia;
-
-/// <summary>Credencial de login (§2.3). El hash lo produce PasswordHasher, nunca texto plano.</summary>
+/// <summary>Credencial de login. El hash se obtiene mediante un adaptador de seguridad.</summary>
 public sealed class Usuario
 {
     public int Id { get; set; }
@@ -12,7 +10,7 @@ public sealed class Usuario
     public bool Activo { get; set; } = true;
 }
 
-/// <summary>§2.3d — refresh token con rotación: al usarse se revoca y se encadena al siguiente.</summary>
+/// <summary>Refresh token con rotación y encadenamiento auditable.</summary>
 public sealed class RefreshToken
 {
     public int Id { get; set; }

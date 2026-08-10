@@ -1,4 +1,5 @@
 using Auth.Api;
+using Auth.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -43,7 +44,10 @@ public sealed class AutenticacionTests : IAsyncLifetime
             .UseSnakeCaseNamingConvention()
             .Options);
         await _db.Database.BeginTransactionAsync();
-        _svc = new ServicioAutenticacion(new RepositorioUsuariosEf(_db), Options.Create(Jwt));
+        _svc = new ServicioAutenticacion(
+            new RepositorioUsuariosEf(_db),
+            new ProtectorContrasenas(),
+            new EmisorJwt(Options.Create(Jwt)));
 
         await _db.SembrarUsuarioAsync(_email, Password, "administrador");
     }
@@ -60,7 +64,7 @@ public sealed class AutenticacionTests : IAsyncLifetime
         {
             ValidIssuer = Jwt.Issuer,
             ValidAudience = Jwt.Audience,
-            IssuerSigningKey = ServicioAutenticacion.LlaveDeFirma(Jwt.Key),
+            IssuerSigningKey = EmisorJwt.LlaveDeFirma(Jwt.Key),
             RoleClaimType = "role"
         });
 

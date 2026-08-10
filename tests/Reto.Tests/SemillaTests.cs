@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Auth.Domain;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Persistencia;

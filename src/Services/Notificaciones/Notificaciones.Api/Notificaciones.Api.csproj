@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <Compile Remove="Application\**\*.cs" />
+    <ProjectReference Include="..\Notificaciones.Application\Notificaciones.Application.csproj" />
     <ProjectReference Include="..\..\..\ServiceHost\ServiceHost.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\Shared\Persistencia\Persistencia.csproj" />

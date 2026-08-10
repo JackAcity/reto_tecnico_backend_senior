@@ -7,6 +7,8 @@ builder.AddServiceDefaults("Auth");
 builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.Configure<OpcionesJwt>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<IRepositorioUsuarios, RepositorioUsuariosEf>();
+builder.Services.AddSingleton<IProtectorContrasenas, ProtectorContrasenas>();
+builder.Services.AddSingleton<IEmisorAccessToken, EmisorJwt>();
 builder.Services.AddScoped<ServicioAutenticacion>();
 
 var app = builder.Build();

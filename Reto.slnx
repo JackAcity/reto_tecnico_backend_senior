@@ -7,6 +7,8 @@
   <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/Auth/">
     <Project Path="src/Services/Auth/Auth.Api/Auth.Api.csproj" />
+    <Project Path="src/Services/Auth/Auth.Application/Auth.Application.csproj" />
+    <Project Path="src/Services/Auth/Auth.Domain/Auth.Domain.csproj" />
   </Folder>
   <Folder Name="/src/Services/CargaMasiva/">
     <Project Path="src/Services/CargaMasiva/CargaMasiva.Api/CargaMasiva.Api.csproj" />
@@ -16,9 +18,11 @@
   </Folder>
   <Folder Name="/src/Services/Control/">
     <Project Path="src/Services/Control/Control.Api/Control.Api.csproj" />
+    <Project Path="src/Services/Control/Control.Application/Control.Application.csproj" />
   </Folder>
   <Folder Name="/src/Services/Notificaciones/">
     <Project Path="src/Services/Notificaciones/Notificaciones.Api/Notificaciones.Api.csproj" />
+    <Project Path="src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Almacenamiento/Almacenamiento.csproj" />

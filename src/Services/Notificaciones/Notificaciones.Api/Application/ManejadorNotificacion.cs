@@ -1,6 +1,6 @@
 using CargaMasiva.Domain;
 using BuildingBlocks;
-using Persistencia;
+using Microsoft.Extensions.Logging;
 
 namespace Notificaciones.Api;
 

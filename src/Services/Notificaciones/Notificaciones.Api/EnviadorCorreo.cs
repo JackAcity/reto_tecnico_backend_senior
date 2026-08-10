@@ -28,12 +28,6 @@ public sealed class OpcionesSmtp
     }
 }
 
-public interface IEnviadorCorreo
-{
-    Task EnviarResumenCargaAsync(
-        string destinatario, int idCarga, int filasInsertadas, int filasRechazadas, DateTimeOffset fechaFin, CancellationToken ct = default);
-}
-
 /// <summary>§4️⃣/§6️⃣ — MailKit, configurable por variables de entorno (único requisito literal del enunciado sobre correo).</summary>
 public sealed class EnviadorCorreoMailKit(IOptions<OpcionesSmtp> opciones) : IEnviadorCorreo
 {

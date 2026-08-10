@@ -1,4 +1,4 @@
-using Persistencia;
+using Auth.Domain;
 
 namespace Auth.Api;
 

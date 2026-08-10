@@ -1,3 +1,4 @@
+using Auth.Domain;
 using Microsoft.EntityFrameworkCore;
 using Persistencia;
 

@@ -35,11 +35,10 @@ desviación vuelva a aparecer en un servicio nuevo.
   concreta.
 
 **Non-Goals:**
-- No se introduce un modelo de Domain paralelo al modelo EF ya existente en
-  `Persistencia` (`CargaArchivo`, `Usuario`, `RefreshToken` ya son POCOs con
-  comportamiento propio — `Transicionar`, `EstaActivo` — sin depender de
-  `DbContext` dentro de sí mismos). Separar un Domain adicional duplicaría
-  tipos sin resolver ningún problema real de este alcance (YAGNI).
+- No se duplica el modelo EF: `CargaArchivo`, `Usuario` y `RefreshToken` se
+  trasladan a los proyectos Domain que los poseen; `Persistencia` conserva
+  únicamente el mapeo y depende hacia esos dominios. No se introduce un
+  segundo modelo ni un mapeador artificial.
 - No se resuelve el fallo latente ya presente hoy en `ManejadorCarga` cuando
   la publicación *final* a la cola de notificación falla después de que la
   carga ya transicionó a `Finalizado` (un reintento de RabbitMQ vuelve a
@@ -80,17 +79,27 @@ con tracking activo (repositorio clásico sobre EF, no Unit of Work nuevo).
 (más flexible) — se descarta porque filtra un detalle de EF (`IQueryable`) a
 través de la abstracción, exactamente lo que el puerto existe para evitar.
 
-### D2 — Capas en Auth, Control y Notificaciones: carpetas, no `.csproj` nuevos
+### D2 — Límites de capa y propietarios de entidades
 
-Los 3 justifican `Application/` + `Infrastructure/` (escala minimal, §2 de
-`dotnet-clean-style`) — no un Domain separado (ver Non-Goals) ni multi-`.csproj`
-(YAGNI, ninguno tiene ciclo de despliegue independiente del resto). Mapeo:
+`CargaMasiva.Domain` y `Auth.Domain` son proyectos puros porque sus entidades
+son consumidas por puertos de Application y por el adaptador EF; así el flujo
+de referencias es `Infraestructura -> Domain`, nunca el inverso. No se duplica
+el modelo: `Persistencia` mapea las mismas entidades y pasa a depender de esos
+proyectos Domain.
 
-| Servicio | Application/ | Infrastructure/ (puerto nuevo) |
-|---|---|---|
-| Auth.Api | `ServicioAutenticacion` (sin cambios de comportamiento) | `IRepositorioUsuarios`: `ObtenerPorEmailAsync`, `ObtenerRefreshTokenAsync`, `RevocarRefreshTokenAsync` (CAS existente), `AgregarRefreshTokenAsync`, `GuardarCambiosAsync` |
-| Control.Api | `ServicioCargas`, `ConsultaCargas` | `IRepositorioCargas` (comando: agregar+guardar) y `IConsultaCargas` (solo lectura, `AsNoTracking` — separados porque `ConsultaCargas` nunca escribe, mismo criterio CQRS-lite que ya usa el proyecto) |
-| Notificaciones.Api | `ManejadorNotificacion` | `IRepositorioNotificaciones`: `ObtenerAsync`, `GuardarCambiosAsync` |
+Auth, Control y Notificaciones tienen también un proyecto `*.Application`.
+Para reducir movimientos mecánicos, sus archivos permanecen bajo la carpeta
+`Application/` del servicio y se incluyen desde ese proyecto; el ejecutable los
+excluye de su propia compilación. El resultado es una frontera de ensamblado
+real: los casos de uso sólo ven sus propios puertos, contratos de
+BuildingBlocks y Domain. La composición y los adaptadores concretos quedan en
+el ejecutable (anillo exterior), que depende hacia Application.
+
+| Servicio | Domain | Application/ | Infrastructure/ |
+|---|---|---|---|
+| Auth.Api | `Auth.Domain`: `Usuario`, `RefreshToken` | `ServicioAutenticacion`, `IRepositorioUsuarios`, `IProtectorContrasenas`, `IEmisorAccessToken` | Repositorio EF, `ProtectorContrasenas`, `EmisorJwt` |
+| Control.Api | `CargaMasiva.Domain` | `ServicioCargas`, `ConsultaCargas`, puertos de repositorio, almacenamiento y publicación | Adaptadores EF, SeaweedFS y RabbitMQ |
+| Notificaciones.Api | `CargaMasiva.Domain` | `ManejadorNotificacion`, `IRepositorioNotificaciones` | Repositorio EF y correo |
 
 `Endpoints/` no se introduce todavía en ninguno de los 3 — los 3 siguen con
 ≤10 rutas mapeadas en `Program.cs` (§3 de `dotnet-clean-style`); introducir la
@@ -106,17 +115,17 @@ establecido en español para DTOs de salida de caso de uso —
 nombra `Resultado<T>`:
 
 ```csharp
-public readonly struct Resultado<T>
+public sealed class Resultado<T>
 {
     public bool EsExitoso { get; }
-    public T? Valor { get; }
+    public T Valor { get; }
     public string? Error { get; }
 
     public static Resultado<T> Exito(T valor) => new(true, valor, null);
     public static Resultado<T> Fallo(string error) => new(false, default, error);
 }
 
-public readonly struct Resultado   // variante sin valor, para operaciones sin retorno útil
+public sealed class Resultado   // variante sin valor, para operaciones sin retorno útil
 {
     public bool EsExitoso { get; }
     public string? Error { get; }
@@ -167,13 +176,13 @@ CargaMasiva tiene capas como **proyectos separados** (`.csproj` distintos) →
 `CargaMasiva.Domain.dll` detecta una referencia a `Microsoft.EntityFrameworkCore`,
 `Npgsql` o `RabbitMQ.Client` con reflection real.
 
-Auth, Control y Notificaciones tienen capas como **carpetas dentro del mismo
-ensamblado** (D2) → no hay límite de ensamblado que inspeccionar; la guardia
-ahí escanea el **texto fuente** de los archivos bajo `*/Application/` (no
-existe `*/Domain/` en estos 3, ver D2) buscando `using Microsoft.EntityFrameworkCore`,
-`using Npgsql` o `using RabbitMQ.Client` — sin Roslyn, sin dependencia nueva
-(`File.ReadAllText` + `string.Contains`, mismo criterio YAGNI que ya eligió
-el proposal original para toda la guardia).
+`Auth.Domain` y los cuatro proyectos `*.Application` se inspeccionan como
+ensamblados puros: reflection comprueba que no referencien EF, Npgsql o
+RabbitMQ. Además la guardia inspecciona sus `.csproj` y falla si alguno
+referencia los adaptadores compartidos `Almacenamiento`, `Mensajeria` o
+`Persistencia`. El escaneo de fuente bajo `*/Application/` se conserva como
+defensa legible: prohíbe esos espacios de adaptadores y, en Auth, Identity,
+Options y los paquetes JWT.
 
 Un solo archivo de test (`Reto.Tests/GuardiaArquitecturaTests.cs`, ya en el
 proyecto renombrado por `saneamiento-proyecto-tests`) corre ambas técnicas,
@@ -187,20 +196,10 @@ una por servicio según su tipo de límite.
   vuelta explícitamente. → Mitigación: los repositorios se registran
   `Scoped`, igual que `RetoDbContext` ya lo está hoy; ningún cambio de
   lifetime.
-- [Riesgo] Cambiar la firma de `IPublicador.PublicarAsync` (D4) es un cambio
-  que toca los 2 lugares donde se llama (`ServicioCargas`, `ManejadorCarga`) —
-  cualquier implementación futura de `IPublicador` (hoy solo hay una, sobre
-  RabbitMQ) también debe adaptarse. → Mitigación: es la única implementación
-  existente, se actualiza en el mismo change; no hay consumidores externos del
-  puerto.
-- [Riesgo] La guardia de arquitectura por texto (D5, servicios con carpetas)
-  es más frágil que reflection real — un `using` con alias o un
-  `using static` no calzaría con el `string.Contains` ingenuo. → Mitigación
-  aceptada: el objetivo es atrapar el caso común (un dev agrega
-  `using Microsoft.EntityFrameworkCore;` en un archivo de `Application/`), no
-  blindar contra evasión deliberada; documentado como límite conocido, no se
-  resuelve con Roslyn ahora (YAGNI) — si aparece un falso negativo real, se
-  aborda entonces.
+- [Riesgo] Los puertos semánticos de publicación (`IPublicadorCargas` e
+  `IPublicadorNotificacion`) obligan a adaptar una implementación nueva de
+  broker. → Mitigación: cada adaptador traduce el único fallo técnico esperado
+  a `Resultado`; los bugs no se capturan como fallo de negocio y se propagan.
 
 ## Migration Plan
 
@@ -210,9 +209,9 @@ una por servicio según su tipo de límite.
    se valida con sus propios tests antes de tocar los otros 3 servicios.
 3. Capas en Auth/Control/Notificaciones (D2) — un servicio a la vez, cada uno
    compila y sus tests existentes siguen pasando sin cambios de comportamiento.
-4. `IPublicador` → `Resultado` (D4) — el cambio de firma que más superficie
-   toca, va después de que los repositorios (1-3) ya existen, así que la
-   rama de manejo de fallo puede usar los mismos puertos.
+4. Puertos de publicación semánticos → `Resultado` (D4) — el cambio de firma
+   que más superficie toca, va después de que los repositorios (1-3) ya
+   existen, así la rama de manejo de fallo puede usar los mismos puertos.
 5. Guardia de arquitectura (D5) — al final: valida el estado final de 1-4 y
    queda corriendo para cualquier servicio futuro.
 

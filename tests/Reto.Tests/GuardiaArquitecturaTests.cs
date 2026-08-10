@@ -21,7 +21,11 @@ public sealed class GuardiaArquitecturaTests
     [Theory]
     [InlineData(typeof(CargaMasiva.Application.ManejadorCarga))]
     [InlineData(typeof(CargaMasiva.Domain.EstadoCarga))]
-    public void CargaMasiva_ApplicationYDomain_NoReferencianInfraestructuraConcreta(Type tipoDeMarca)
+    [InlineData(typeof(Auth.Api.ServicioAutenticacion))]
+    [InlineData(typeof(Auth.Domain.Usuario))]
+    [InlineData(typeof(Control.Api.ServicioCargas))]
+    [InlineData(typeof(Notificaciones.Api.ManejadorNotificacion))]
+    public void NucleosYApplication_NoReferencianInfraestructuraConcreta(Type tipoDeMarca)
     {
         var referenciadas = tipoDeMarca.Assembly.GetReferencedAssemblies().Select(a => a.Name).ToList();
 
@@ -29,10 +33,14 @@ public sealed class GuardiaArquitecturaTests
             Assert.DoesNotContain(prohibido, referenciadas);
     }
 
-    [Fact]
-    public void CargaMasiva_Application_NoReferenciaAdaptadoresCompartidos()
+    [Theory]
+    [InlineData("src/Services/CargaMasiva/CargaMasiva.Application/CargaMasiva.Application.csproj")]
+    [InlineData("src/Services/Auth/Auth.Application/Auth.Application.csproj")]
+    [InlineData("src/Services/Control/Control.Application/Control.Application.csproj")]
+    [InlineData("src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj")]
+    public void Application_NoReferenciaAdaptadoresCompartidos(string rutaProyecto)
     {
-        var proyecto = File.ReadAllText(Proyecto("src", "Services", "CargaMasiva", "CargaMasiva.Application", "CargaMasiva.Application.csproj"));
+        var proyecto = File.ReadAllText(Path.Combine(RaizRepo, rutaProyecto.Replace('/', Path.DirectorySeparatorChar)));
 
         Assert.DoesNotContain("Shared\\Almacenamiento", proyecto, StringComparison.Ordinal);
         Assert.DoesNotContain("Shared\\Mensajeria", proyecto, StringComparison.Ordinal);
@@ -69,6 +77,10 @@ public sealed class GuardiaArquitecturaTests
 
             Assert.DoesNotContain("using Almacenamiento;", contenido, StringComparison.Ordinal);
             Assert.DoesNotContain("using Mensajeria;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Persistencia;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.AspNetCore.Identity;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.Extensions.Options;", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("using Microsoft.IdentityModel", contenido, StringComparison.Ordinal);
         }
     }
 }

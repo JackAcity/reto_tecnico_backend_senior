@@ -1,47 +1,39 @@
-using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
-using BuildingBlocks;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
-using Persistencia;
+using Auth.Domain;
 
 namespace Auth.Api;
 
-public sealed class OpcionesJwt
+public sealed record ResultadoAutenticacion(string AccessToken, DateTimeOffset ExpiraEn, string RefreshToken);
+
+public enum VeredictoContrasena { Fallida, Valida, RehashNecesario }
+
+public interface IProtectorContrasenas
 {
-    public string Key { get; set; } = "";
-    public string Issuer { get; set; } = "";
-    public string Audience { get; set; } = "";
-    public int ExpiraMinutos { get; set; } = 60;
-    public int RefreshExpiraDias { get; set; } = 7;
+    VeredictoContrasena Verificar(Usuario usuario, string password);
+    void VerificarUsuarioInexistente(string password);
+    string Hash(Usuario usuario, string password);
 }
 
-public sealed record ResultadoAutenticacion(string AccessToken, DateTimeOffset ExpiraEn, string RefreshToken);
+public sealed record TokenAcceso(string Valor, DateTimeOffset ExpiraEn);
+
+public interface IEmisorAccessToken
+{
+    TimeSpan DuracionRefresh { get; }
+    TokenAcceso Emitir(Usuario usuario, DateTimeOffset ahora);
+}
 
 /// <summary>
 /// Emisión y rotación de credenciales (§2.3). Fuera de los endpoints para que la
 /// rotación —que es la parte con reglas de verdad— sea testeable sin levantar HTTP.
 /// </summary>
-public sealed class ServicioAutenticacion(IRepositorioUsuarios repositorio, IOptions<OpcionesJwt> opciones)
+public sealed class ServicioAutenticacion(
+    IRepositorioUsuarios repositorio,
+    IProtectorContrasenas contrasenas,
+    IEmisorAccessToken emisor)
 {
     /// <summary>Claim de permiso. El gateway lo exige en la ruta de carga (§3.2a).</summary>
     public const string ClaimPermiso = "permiso";
     public const string PermisoCargaMasiva = "carga:masiva";
-
-    private static readonly PasswordHasher<Usuario> Hasher = new();
-
-    // Usuario y hash de relleno para cuando el email no existe. Sin esto, "usuario
-    // inexistente" retorna antes de correr PBKDF2 y "password incorrecta" sí lo
-    // corre — el tiempo de respuesta delata qué emails existen aunque el 401 sea
-    // idéntico en body y status. Se verifica siempre contra ALGÚN hash.
-    private static readonly Usuario UsuarioFicticio = new() { Id = -1, Email = "", Rol = "" };
-    private static readonly string HashFicticio =
-        new PasswordHasher<Usuario>().HashPassword(UsuarioFicticio, Guid.NewGuid().ToString());
-
-    private readonly OpcionesJwt _jwt = opciones.Value;
 
     /// <summary>Qué habilita cada rol. Un solo lugar donde mirar cuando el evaluador pregunte.</summary>
     public static string[] PermisosDe(string rol) => rol switch
@@ -55,16 +47,20 @@ public sealed class ServicioAutenticacion(IRepositorioUsuarios repositorio, IOpt
     {
         var usuario = await repositorio.ObtenerPorEmailActivoAsync(email, ct);
 
-        var verificacion = Hasher.VerifyHashedPassword(
-            usuario ?? UsuarioFicticio, usuario?.PasswordHash ?? HashFicticio, password);
+        if (usuario is null)
+        {
+            contrasenas.VerificarUsuarioInexistente(password);
+            return null;
+        }
 
-        if (usuario is null || verificacion == PasswordVerificationResult.Failed)
+        var verificacion = contrasenas.Verificar(usuario, password);
+        if (verificacion == VeredictoContrasena.Fallida)
             return null;
 
         // El hash quedó con parámetros viejos: se actualiza aprovechando que la
         // contraseña en claro está disponible justo en este punto y en ningún otro.
-        if (verificacion == PasswordVerificationResult.SuccessRehashNeeded)
-            usuario.PasswordHash = Hasher.HashPassword(usuario, password);
+        if (verificacion == VeredictoContrasena.RehashNecesario)
+            usuario.PasswordHash = contrasenas.Hash(usuario, password);
 
         return await EmitirAsync(usuario, anterior: null, ct);
     }
@@ -108,54 +104,18 @@ public sealed class ServicioAutenticacion(IRepositorioUsuarios repositorio, IOpt
         {
             UsuarioId = usuario.Id,
             Token = nuevoToken,
-            ExpiraEn = ahora.AddDays(_jwt.RefreshExpiraDias)
+            ExpiraEn = ahora.Add(emisor.DuracionRefresh)
         };
         repositorio.AgregarRefreshToken(nuevo);
         await repositorio.GuardarCambiosAsync(ct);
 
-        var expiraEn = ahora.AddMinutes(_jwt.ExpiraMinutos);
-        return new ResultadoAutenticacion(CrearAccessToken(usuario, ahora, expiraEn), expiraEn, nuevo.Token);
-    }
-
-    private string CrearAccessToken(Usuario usuario, DateTimeOffset ahora, DateTimeOffset expiraEn)
-    {
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, usuario.Email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-            new("role", usuario.Rol)
-        };
-        claims.AddRange(PermisosDe(usuario.Rol).Select(p => new Claim(ClaimPermiso, p)));
-
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Issuer = _jwt.Issuer,
-            Audience = _jwt.Audience,
-            IssuedAt = ahora.UtcDateTime,
-            Expires = expiraEn.UtcDateTime,
-            Subject = new ClaimsIdentity(claims),
-            SigningCredentials = new SigningCredentials(LlaveDeFirma(_jwt.Key), SecurityAlgorithms.HmacSha256)
-        };
-
-        return new JsonWebTokenHandler().CreateToken(descriptor);
-    }
-
-    /// <summary>
-    /// HS256 exige al menos 256 bits de clave; una más corta falla al firmar, no
-    /// al validar. <c>ExcepcionDeConfiguracion</c> (no <c>InvalidOperationException</c>
-    /// pelada): esto corre en cada login, alcanzable dentro de un request HTTP en
-    /// curso (clasificacion-excepciones-config).
-    /// </summary>
-    public static SymmetricSecurityKey LlaveDeFirma(string key)
-    {
-        var bytes = Encoding.UTF8.GetBytes(key);
-        if (bytes.Length < 32)
-            throw new ExcepcionDeConfiguracion("Jwt:Key debe tener al menos 32 caracteres para HS256.");
-
-        return new SymmetricSecurityKey(bytes);
+        var accessToken = emisor.Emitir(usuario, ahora);
+        return new ResultadoAutenticacion(accessToken.Valor, accessToken.ExpiraEn, nuevo.Token);
     }
 
     private static string GenerarRefreshToken() =>
-        Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
 }

@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CargaMasiva.Domain\CargaMasiva.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Persistencia\Persistencia.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Almacenamiento\Almacenamiento.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Mensajeria\Mensajeria.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BuildingBlocks;
 using RabbitMQ.Client;
 
 namespace Mensajeria;
@@ -19,12 +20,15 @@ public sealed class OpcionesRabbit
     /// siempre funcionaban en docker-compose (.env los inyecta), y por eso mismo
     /// escondían el error si algún día un servicio corre suelto sin configurar nada
     /// — guest/guest en particular es la credencial insegura de fábrica de RabbitMQ.
+    /// <c>ExcepcionDeConfiguracion</c> (no <c>InvalidOperationException</c> pelada):
+    /// esta validación corre en <c>PublicadorRabbit.CanalAsync</c>, alcanzable
+    /// dentro de un request HTTP en curso (clasificacion-excepciones-config).
     /// </summary>
     public void Validar()
     {
-        if (string.IsNullOrWhiteSpace(Host)) throw new InvalidOperationException("Falta RabbitMq:Host.");
-        if (string.IsNullOrWhiteSpace(Usuario)) throw new InvalidOperationException("Falta RabbitMq:Usuario.");
-        if (string.IsNullOrWhiteSpace(Password)) throw new InvalidOperationException("Falta RabbitMq:Password.");
+        if (string.IsNullOrWhiteSpace(Host)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Host.");
+        if (string.IsNullOrWhiteSpace(Usuario)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Usuario.");
+        if (string.IsNullOrWhiteSpace(Password)) throw new ExcepcionDeConfiguracion("Falta RabbitMq:Password.");
     }
 }
 

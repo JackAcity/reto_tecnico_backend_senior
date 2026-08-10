@@ -25,6 +25,6 @@
     <Project Path="src/Shared/Persistencia/Persistencia.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/CargaMasiva.Tests/CargaMasiva.Tests.csproj" />
+    <Project Path="tests/Reto.Tests/Reto.Tests.csproj" />
   </Folder>
 </Solution>

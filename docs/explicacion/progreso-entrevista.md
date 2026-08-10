@@ -52,16 +52,48 @@ leer esto primero para no repetir lo ya firme y priorizar lo pendiente.
   del usuario, más portátil para pantalla compartida, sin depender de la app
   draw.io.
 
+## Cubierto en esta ronda (modo 2, "¿por qué X y no Y?") — 2026-08-10
+
+Todos con feedback completo dado y corrección/cita exacta señalada — repasar
+antes de la entrevista real, no solo la resolución sino el número/línea
+citado:
+
+- **C1** — falta memorizar el hash del commit (`abba4ad`) + fechas EOL
+  (.NET 8/9 mueren 10-nov-2026).
+- **C2** — falta la mitad más filosa: implementado literal, CargaMasiva se
+  autobloquea; el fix real es `IdCarga <> @idCargaActual` en el SQL, no solo
+  "Control no parsea Excel".
+- **C3** — falta la trampa "¿por qué no el primer periodo?": violaría el
+  mandato de auditoría del enunciado.
+- **C4** — falta el número (42%, 84/116 códigos duplicados, 35 intra-periodo
+  vs 36 cruzando periodos) — es lo que prueba que no es un edge case teórico.
+- **C6** — bien la distinción Bloqueada/Rechazada; falta el desempate mixto
+  (un periodo YaCargado + otro Bloqueado → gana Bloqueada, más accionable).
+- **C8** — falta la capa doble (índice compuesto + chequeo de estado antes
+  de procesar) y por qué vive en el motor, no en C# (TOCTOU).
+- **C9 directa** — bien el lock; falta el paso 2 del SP (libera reservas de
+  cargas muertas, si no el periodo queda secuestrado para siempre).
+
+**Hallazgo propio nuevo, no en el enunciado original:** **C19** — el usuario
+señaló en vivo que `ManejadorCarga` vivía en Infrastructure con
+`new ProcesadorLote(reglas)` adentro (violación de DIP + capa equivocada).
+**Ya arreglado**: movido a `CargaMasiva.Application`, puertos nuevos
+`ILectorExcel`/`IInsertadorMasivo`, `ProcesadorLote` inyectado. Documentado
+completo en `design.md` §C19, incluido el límite honesto (Application ahora
+referencia Persistencia/Almacenamiento/Mensajeria transitivamente — no es
+pureza 100%, y se explica por qué no se fue más lejos). Verificado: build
+14 proyectos sin error, 100/100 tests, carga real corrida contra el
+contenedor reconstruido.
+
 ## Pendiente — no cubierto todavía
 
-C1 (.NET 10 vs 8/9), C2 (validación en servicio correcto), C3 (tres periodos
-en un archivo), C4 (dedup intra-lote), C6 (máquina de estados — ya revisado
-el diagrama, falta drillear en modo pregunta), C8 (idempotent consumer), C9
-(ya tocado de forma indirecta vía concurrencia, falta la versión "pregunta
-directa"), C11 (migraciones, un solo dueño del esquema), C12 (tres techos de
-tamaño de archivo), C13 (secretos, tres escalones), C14 (hardening — no-root,
-firma binaria, nosniff), C15 (CQRS una tabla), C16 (Postgres en contenedor),
-C17 (RabbitMQ vs Kafka).
+C11 (migraciones, un solo dueño del esquema — pregunta ya hecha, quedó
+pendiente la respuesta cuando surgió C19), C12 (tres techos de tamaño de
+archivo), C13 (secretos, tres escalones), C14 (hardening — no-root, firma
+binaria, nosniff), C15 (CQRS una tabla), C16 (Postgres en contenedor), C17
+(RabbitMQ vs Kafka — ya cubierto en profundidad fuera del modo 2, con
+cuenta de costos y el ángulo de auditoría/ROI de IA vs reglas — repasar esa
+conversación en vez de repetirla).
 
 Modos del skill sin usar todavía: **1** (recorrido guiado completo),
 **4** (simulacro rápido mezclando todo), **5** (ensayo del guion del video,

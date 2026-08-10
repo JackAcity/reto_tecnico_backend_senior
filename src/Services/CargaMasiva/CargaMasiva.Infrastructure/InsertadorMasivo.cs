@@ -1,3 +1,4 @@
+using CargaMasiva.Application;
 using CargaMasiva.Domain;
 using Npgsql;
 
@@ -15,7 +16,7 @@ namespace CargaMasiva.Infrastructure;
 /// <see cref="IReglasCarga.ObtenerExistentesAsync"/> ya los filtró (una carga
 /// concurrente pudo insertarlos justo en el medio).
 /// </summary>
-public sealed class InsertadorMasivo(string cadenaConexion, int tamanoLote = 20_000)
+public sealed class InsertadorMasivo(string cadenaConexion, int tamanoLote = 20_000) : IInsertadorMasivo
 {
     public async Task<int> InsertarAsync(int idCarga, IReadOnlyList<FilaProducto> filas, CancellationToken ct)
     {

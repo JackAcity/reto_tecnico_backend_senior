@@ -1,22 +1,27 @@
 using System.Text.Json;
+using BuildingBlocks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 namespace Mensajeria;
 
 public interface IPublicador
 {
     /// <summary>
-    /// Publica y espera la confirmación del broker. Si un routing key no tiene
-    /// cola vinculada, esto lanza <see cref="RabbitMQ.Client.Exceptions.PublishReturnException"/>
-    /// (ver <see cref="PublicadorRabbit"/>) — el llamador ya debe tratar cualquier
-    /// excepción de este método como "no se pudo encolar" (§C7).
+    /// Publica y espera la confirmación del broker. Un fallo de infraestructura
+    /// esperado (broker caído, routing key sin cola vinculada — ver
+    /// <see cref="PublicadorRabbit"/>) se comunica como <c>Resultado.Fallo(...)</c>,
+    /// no como excepción (design.md §D4 de arquitectura-hexagonal-transversal) — el
+    /// llamador ya debe tratar un <c>Resultado</c> fallido como "no se pudo encolar"
+    /// (§C7). Una excepción que sí se propaga desde este método es un bug, no un
+    /// fallo esperado.
     /// </summary>
-    Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default);
+    Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -45,24 +50,37 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
     private IConnection? _conexion;
     private IChannel? _canal;
 
-    public async Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
+    public async Task<Resultado> PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
     {
-        var canal = await CanalAsync(ct);
-        var propiedades = new BasicProperties
+        try
         {
-            ContentType = "application/json",
-            DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
-            CorrelationId = correlationId,
-            MessageId = Guid.NewGuid().ToString("N"),
-            // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
-            // no hace falta reinventarlo dentro del JSON, que además el enunciado
-            // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
-            Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-        };
+            var canal = await CanalAsync(ct);
+            var propiedades = new BasicProperties
+            {
+                ContentType = "application/json",
+                DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
+                CorrelationId = correlationId,
+                MessageId = Guid.NewGuid().ToString("N"),
+                // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
+                // no hace falta reinventarlo dentro del JSON, que además el enunciado
+                // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            };
 
-        await canal.BasicPublishAsync(
-            Topologia.Exchange, routingKey, mandatory: true, propiedades,
-            JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
+            await canal.BasicPublishAsync(
+                Topologia.Exchange, routingKey, mandatory: true, propiedades,
+                JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
+
+            return Resultado.Exito();
+        }
+        catch (RabbitMQClientException ex)
+        {
+            // Fallo de infraestructura esperado (broker caído, routing key sin cola
+            // vinculada — PublishReturnException). Cualquier otra excepción (un bug
+            // real de serialización, por ejemplo) no es de este tipo y se propaga
+            // sin capturarse (design.md §D4).
+            return Resultado.Fallo(ex.Message);
+        }
     }
 
     private async Task<IChannel> CanalAsync(CancellationToken ct)

@@ -15,7 +15,10 @@ builder.Services.AddMensajeria(builder.Configuration);
 var cadenaPostgres = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("Falta ConnectionStrings:Postgres.");
 builder.Services.AddScoped<IReglasCarga>(_ => new ReglasCargaSql(cadenaPostgres));
-builder.Services.AddScoped(_ => new InsertadorMasivo(cadenaPostgres));
+builder.Services.AddScoped<IInsertadorMasivo>(_ => new InsertadorMasivo(cadenaPostgres));
+builder.Services.AddScoped<ILectorExcel, LectorExcel>();
+builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
+builder.Services.AddScoped<ProcesadorLote>();
 builder.Services.AddScoped<ManejadorCarga>();
 
 builder.Services.AddHostedService<ConsumidorCargaMasiva>();

@@ -99,13 +99,19 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         // ex.Message solo se expone para las excepciones esperadas (mensajes que el
         // propio código escribió pensando en que el cliente los lea, ej.
-        // TransicionInvalidaException). Para todo lo demás (500: fallo de Npgsql,
-        // de RabbitMQ, o cualquier excepción no prevista) el mensaje puede traer
-        // detalles internos — connection strings, nombres de columna, stack de
-        // terceros. Ahí solo se expone el correlationId; el detalle real queda en
-        // el log del servidor, ya escrito arriba.
+        // TransicionInvalidaException). ExcepcionDeConfiguracion se matchea ANTES
+        // que el case combinado: es una InvalidOperationException, pero su mensaje
+        // (nombre de una variable de entorno faltante — Falta RabbitMq:Host, Falta
+        // Jwt:Key) no está pensado para el cliente, aunque comparta tipo base con
+        // una excepción de negocio real (clasificacion-excepciones-config). Para
+        // todo lo demás no clasificado (500: fallo de Npgsql, de RabbitMQ, o
+        // cualquier excepción no prevista) el mensaje puede traer detalles
+        // internos — connection strings, nombres de columna, stack de terceros.
+        // Ahí solo se expone el correlationId; el detalle real queda en el log
+        // del servidor, ya escrito arriba.
         var (status, titulo, exponerDetalle) = ex switch
         {
+            ExcepcionDeConfiguracion => (StatusCodes.Status500InternalServerError, "Error interno", false),
             ArgumentException or InvalidOperationException => (StatusCodes.Status400BadRequest, "Solicitud inválida", true),
             UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Acceso denegado", true),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Recurso no encontrado", true),

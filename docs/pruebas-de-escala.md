@@ -82,7 +82,7 @@ Mismo archivo (`carga_masiva_2M.xlsx`), mismo stack reconstruido con el fix.
   chunking arregla el insert, no las copias completas que arma
   `ProcesadorLote` antes de llegar ahí.
 - **100/100 tests automatizados** siguen en verde después del cambio
-  (`dotnet test tests/CargaMasiva.Tests`).
+  (`dotnet test tests/Reto.Tests`).
 
 ## Corrida 3 — 5M filas: no falla limpio, entra en OOM-loop
 

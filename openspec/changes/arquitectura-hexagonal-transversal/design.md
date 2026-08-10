@@ -1,0 +1,221 @@
+## Context
+
+La auditoría `dotnet-audit` sobre el repo completo confirmó las 3 desviaciones
+reales que el proposal ya identificaba, con evidencia concreta de código:
+
+- `CargaMasiva.Application/ManejadorCarga.cs:32` depende del constructor de
+  `RetoDbContext` (EF concreto), no de un puerto — único caso de acceso a
+  datos sin puerto en el reto.
+- `Auth.Api/ServicioAutenticacion.cs`, `Control.Api/ServicioCargas.cs`,
+  `Control.Api/ConsultaCargas.cs` y `Notificaciones.Api/ManejadorNotificacion.cs`
+  dependen todos directo de `RetoDbContext`, sin capa Application/Domain
+  declarada donde trazar el límite.
+- Ningún caso de uso devuelve un resultado de negocio explícito. Evidencia
+  puntual: `Control.Api/ServicioCargas.cs:96` — `catch (Exception ex)` alrededor
+  de la publicación a RabbitMQ atrapa *cualquier* excepción, no solo el fallo
+  de infraestructura esperado; un bug real en `IPublicador` se reportaría como
+  "carga registrada pero no encolada" en vez de propagarse.
+
+No existe hoy ninguna guardia automática que impida que este tipo de
+desviación vuelva a aparecer en un servicio nuevo.
+
+## Goals / Non-Goals
+
+**Goals:**
+- Cerrar el único gap de DIP en `CargaMasiva.Application` con un puerto
+  angosto (ISP).
+- Dar a Auth, Control y Notificaciones una separación de capas real donde su
+  lógica ya lo justifica (los 3 tienen reglas de negocio no triviales:
+  mitigación de timing attack + rotación CAS en Auth; validación de archivo +
+  dual-write en Control; idempotencia + transición de estado en Notificaciones).
+- Introducir `Resultado<T>` para fallos de negocio esperados, reservando
+  excepciones para lo verdaderamente excepcional.
+- Agregar una guardia de arquitectura determinística que falle el build si
+  Application/Domain de cualquier servicio referencia infraestructura
+  concreta.
+
+**Non-Goals:**
+- No se introduce un modelo de Domain paralelo al modelo EF ya existente en
+  `Persistencia` (`CargaArchivo`, `Usuario`, `RefreshToken` ya son POCOs con
+  comportamiento propio — `Transicionar`, `EstaActivo` — sin depender de
+  `DbContext` dentro de sí mismos). Separar un Domain adicional duplicaría
+  tipos sin resolver ningún problema real de este alcance (YAGNI).
+- No se resuelve el fallo latente ya presente hoy en `ManejadorCarga` cuando
+  la publicación *final* a la cola de notificación falla después de que la
+  carga ya transicionó a `Finalizado` (un reintento de RabbitMQ vuelve a
+  entrar y la guarda de idempotencia lo ignora en silencio, sin republicar).
+  Es un bug preexistente fuera del alcance de las 4 capabilities de este
+  change — se documenta como Open Question, no se arregla de paso.
+- No se toca el mecanismo de reintentos/DLQ de RabbitMQ ni la máquina de
+  estados (`maquina-estados.md`, ya especificada en `carga-masiva-microservicios`).
+
+## Decisions
+
+### D1 — Puerto de datos de `ManejadorCarga`: `IRepositorioCargas`
+
+Puerto angosto en `CargaMasiva.Application`, implementado en
+`CargaMasiva.Infrastructure` sobre el `RetoDbContext` ya existente (mismo
+`DbContext` con scope por mensaje, solo detrás de una interfaz):
+
+```csharp
+public interface IRepositorioCargas
+{
+    Task<CargaArchivo> ObtenerAsync(int idCarga, CancellationToken ct);
+    Task<IReadOnlyList<CargaPeriodo>> ObtenerPeriodosAsync(int idCarga, CancellationToken ct);
+    void AgregarErrores(IEnumerable<DetalleCargaError> errores);
+    Task GuardarCambiosAsync(CancellationToken ct);
+}
+```
+
+Mapeo 1:1 con el uso actual dentro de `ManejadorCarga.ProcesarAsync`:
+`db.CargaArchivos.SingleAsync` → `ObtenerAsync`; `db.CargaPeriodos.Where(...)`
+→ `ObtenerPeriodosAsync`; `db.DetalleCargaErrores.AddRange(...)` →
+`AgregarErrores`; los dos `db.SaveChangesAsync(ct)` → `GuardarCambiosAsync`.
+`carga.Transicionar(...)` sigue siendo un método de dominio sobre la entidad
+ya cargada — no necesita puerto, el cambio se persiste en el siguiente
+`GuardarCambiosAsync` porque la implementación mantiene el mismo `DbContext`
+con tracking activo (repositorio clásico sobre EF, no Unit of Work nuevo).
+
+**Alternativa descartada**: exponer `IQueryable<CargaArchivo>` en el puerto
+(más flexible) — se descarta porque filtra un detalle de EF (`IQueryable`) a
+través de la abstracción, exactamente lo que el puerto existe para evitar.
+
+### D2 — Capas en Auth, Control y Notificaciones: carpetas, no `.csproj` nuevos
+
+Los 3 justifican `Application/` + `Infrastructure/` (escala minimal, §2 de
+`dotnet-clean-style`) — no un Domain separado (ver Non-Goals) ni multi-`.csproj`
+(YAGNI, ninguno tiene ciclo de despliegue independiente del resto). Mapeo:
+
+| Servicio | Application/ | Infrastructure/ (puerto nuevo) |
+|---|---|---|
+| Auth.Api | `ServicioAutenticacion` (sin cambios de comportamiento) | `IRepositorioUsuarios`: `ObtenerPorEmailAsync`, `ObtenerRefreshTokenAsync`, `RevocarRefreshTokenAsync` (CAS existente), `AgregarRefreshTokenAsync`, `GuardarCambiosAsync` |
+| Control.Api | `ServicioCargas`, `ConsultaCargas` | `IRepositorioCargas` (comando: agregar+guardar) y `IConsultaCargas` (solo lectura, `AsNoTracking` — separados porque `ConsultaCargas` nunca escribe, mismo criterio CQRS-lite que ya usa el proyecto) |
+| Notificaciones.Api | `ManejadorNotificacion` | `IRepositorioNotificaciones`: `ObtenerAsync`, `GuardarCambiosAsync` |
+
+`Endpoints/` no se introduce todavía en ninguno de los 3 — los 3 siguen con
+≤10 rutas mapeadas en `Program.cs` (§3 de `dotnet-clean-style`); introducir la
+carpeta ahora sería estructura sin necesidad (YAGNI).
+
+### D3 — Nombre del tipo: `Resultado<T>`, no `Result<T>`
+
+El proposal dejaba el naming abierto. El propio código ya tiene el patrón
+establecido en español para DTOs de salida de caso de uso —
+`ResultadoRegistro`, `ResultadoAutenticacion`, `ResultadoPeriodo` — así que
+`Result<T>` en inglés rompería la convención bilingüe existente (§4 de
+`dotnet-clean-style`: español para lo que tiene significado de negocio). Se
+nombra `Resultado<T>`:
+
+```csharp
+public readonly struct Resultado<T>
+{
+    public bool EsExitoso { get; }
+    public T? Valor { get; }
+    public string? Error { get; }
+
+    public static Resultado<T> Exito(T valor) => new(true, valor, null);
+    public static Resultado<T> Fallo(string error) => new(false, default, error);
+}
+
+public readonly struct Resultado   // variante sin valor, para operaciones sin retorno útil
+{
+    public bool EsExitoso { get; }
+    public string? Error { get; }
+
+    public static Resultado Exito() => new(true, null);
+    public static Resultado Fallo(string error) => new(false, error);
+}
+```
+
+Vive en `src/BuildingBlocks` (compartido por los 5 servicios, igual que
+`ServiceDefaults`).
+
+### D4 — Dónde se aplica `Resultado<T>`: `IPublicador` y `ManejadorCarga`
+
+`IPublicador.PublicarAsync` cambia de `Task` (lanza al fallar) a
+`Task<Resultado>`. Esto cierra el hallazgo concreto de la auditoría:
+
+- **`ServicioCargas.RegistrarAsync`**: el `catch (Exception ex)` genérico se
+  reemplaza por una rama explícita sobre `resultado.EsExitoso`. Mismo
+  comportamiento observable (carga queda `Fallida`, se devuelve
+  `ResultadoRegistro` con `Error`), pero ya no puede confundir un bug real
+  dentro de `IPublicador` con un fallo esperado de infraestructura — un bug
+  ahora sí se propaga como excepción no controlada.
+- **`ManejadorCarga.ProcesarAsync`** (publicación final a la cola de
+  notificación): pasa de "dejar que la excepción suba y RabbitMQ reintente"
+  a "loguear el fallo con `log.LogWarning` y retornar normalmente" — la carga
+  ya es `Finalizado` en este punto, y el reintento actual no hacía nada útil
+  de todas formas (ver Non-Goals: el bug preexistente de la guarda de
+  idempotencia). Este es un cambio de comportamiento observable, documentado
+  acá explícitamente, no incidental.
+- `ManejadorCarga.ProcesarAsync` en sí pasa de `Task` a `Task<Resultado<EstadoCarga>>`
+  — comunica el estado terminal (`Rechazada`/`Bloqueada`/`Finalizado`) sin que
+  el llamador (o un test) tenga que releer la base para saber qué pasó.
+  `ConsumidorCargaMasiva` sigue actuando igual (ack siempre que no haya
+  excepción); el valor de retorno se usa solo para logging y para los tests
+  nuevos de esta capability.
+
+### D5 — Guardia de arquitectura: dos técnicas, una por tipo de límite
+
+CargaMasiva tiene capas como **proyectos separados** (`.csproj` distintos) →
+`Assembly.GetReferencedAssemblies()` sobre `CargaMasiva.Application.dll` y
+`CargaMasiva.Domain.dll` detecta una referencia a `Microsoft.EntityFrameworkCore`,
+`Npgsql` o `RabbitMQ.Client` con reflection real.
+
+Auth, Control y Notificaciones tienen capas como **carpetas dentro del mismo
+ensamblado** (D2) → no hay límite de ensamblado que inspeccionar; la guardia
+ahí escanea el **texto fuente** de los archivos bajo `*/Application/` (no
+existe `*/Domain/` en estos 3, ver D2) buscando `using Microsoft.EntityFrameworkCore`,
+`using Npgsql` o `using RabbitMQ.Client` — sin Roslyn, sin dependencia nueva
+(`File.ReadAllText` + `string.Contains`, mismo criterio YAGNI que ya eligió
+el proposal original para toda la guardia).
+
+Un solo archivo de test (`Reto.Tests/GuardiaArquitecturaTests.cs`, ya en el
+proyecto renombrado por `saneamiento-proyecto-tests`) corre ambas técnicas,
+una por servicio según su tipo de límite.
+
+## Risks / Trade-offs
+
+- [Riesgo] El repositorio EF-backed (D1, D2) sigue dependiendo de que el
+  `DbContext` inyectado sea el mismo a lo largo de un scope para que
+  `Transicionar()` + `GuardarCambiosAsync()` funcionen sin pasar la entidad de
+  vuelta explícitamente. → Mitigación: los repositorios se registran
+  `Scoped`, igual que `RetoDbContext` ya lo está hoy; ningún cambio de
+  lifetime.
+- [Riesgo] Cambiar la firma de `IPublicador.PublicarAsync` (D4) es un cambio
+  que toca los 2 lugares donde se llama (`ServicioCargas`, `ManejadorCarga`) —
+  cualquier implementación futura de `IPublicador` (hoy solo hay una, sobre
+  RabbitMQ) también debe adaptarse. → Mitigación: es la única implementación
+  existente, se actualiza en el mismo change; no hay consumidores externos del
+  puerto.
+- [Riesgo] La guardia de arquitectura por texto (D5, servicios con carpetas)
+  es más frágil que reflection real — un `using` con alias o un
+  `using static` no calzaría con el `string.Contains` ingenuo. → Mitigación
+  aceptada: el objetivo es atrapar el caso común (un dev agrega
+  `using Microsoft.EntityFrameworkCore;` en un archivo de `Application/`), no
+  blindar contra evasión deliberada; documentado como límite conocido, no se
+  resuelve con Roslyn ahora (YAGNI) — si aparece un falso negativo real, se
+  aborda entonces.
+
+## Migration Plan
+
+1. `Resultado<T>`/`Resultado` en `BuildingBlocks` (D3) — sin consumidores
+   todavía, cero riesgo de romper algo existente.
+2. `IRepositorioCargas` + adaptador EF en CargaMasiva (D1) — service aislado,
+   se valida con sus propios tests antes de tocar los otros 3 servicios.
+3. Capas en Auth/Control/Notificaciones (D2) — un servicio a la vez, cada uno
+   compila y sus tests existentes siguen pasando sin cambios de comportamiento.
+4. `IPublicador` → `Resultado` (D4) — el cambio de firma que más superficie
+   toca, va después de que los repositorios (1-3) ya existen, así que la
+   rama de manejo de fallo puede usar los mismos puertos.
+5. Guardia de arquitectura (D5) — al final: valida el estado final de 1-4 y
+   queda corriendo para cualquier servicio futuro.
+
+Rollback: cada paso es un commit independiente; revertir el último paso que
+falló no arrastra a los anteriores (no hay dependencia hacia atrás).
+
+## Open Questions
+
+- El bug preexistente de la guarda de idempotencia (Non-Goals) — ¿se abre un
+  hallazgo aparte para `carga-masiva-microservicios` o se deja como deuda
+  documentada sin change todavía? No se decide acá; se marca para
+  `dotnet-audit` en una próxima pasada.

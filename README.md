@@ -103,7 +103,7 @@ curl http://localhost:8080/cargas -H "Authorization: Bearer $TOKEN"
 prueba para Postgres/RabbitMQ/SeaweedFS, solo para llamadas HTTP salientes puntuales):
 
 ```bash
-dotnet test tests/CargaMasiva.Tests/CargaMasiva.Tests.csproj
+dotnet test tests/Reto.Tests/Reto.Tests.csproj
 ```
 
 **Cliente web (React, opcional — §2.1 del enunciado)** — las 4 pantallas exigidas

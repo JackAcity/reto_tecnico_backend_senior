@@ -1,4 +1,5 @@
 using System.Text;
+using CargaMasiva.Application;
 using CargaMasiva.Domain;
 using ExcelDataReader;
 
@@ -8,9 +9,10 @@ namespace CargaMasiva.Infrastructure;
 /// Lectura forward-only del .xlsx. ExcelDataReader mantiene memoria constante
 /// sin importar el tamaño del archivo: el reto se llama "carga masiva", así que
 /// cargar el libro entero en memoria (ClosedXML/EPPlus) sería la decisión incorrecta.
-/// EPPlus además no es libre para uso comercial.
+/// EPPlus además no es libre para uso comercial. Implementa <see cref="ILectorExcel"/>
+/// (Application) — el caso de uso depende del puerto, no de ExcelDataReader.
 /// </summary>
-public sealed class LectorExcel
+public sealed class LectorExcel : ILectorExcel
 {
     static LectorExcel() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 

@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <Compile Remove="Application\**\*.cs" />
+    <ProjectReference Include="..\Control.Application\Control.Application.csproj" />
+    <ProjectReference Include="..\..\..\ServiceHost\ServiceHost.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\Shared\Persistencia\Persistencia.csproj" />
     <ProjectReference Include="..\..\..\Shared\Mensajeria\Mensajeria.csproj" />

@@ -76,6 +76,32 @@ sequenceDiagram
     Note over CM: Terminal sin Notificado (maquina-estados.md)<br/>NO se publica en la cola de notificaciones
 ```
 
+## El mismo rechazo a escala: 2 millones de filas
+
+El diagrama anterior usa el fixture de 200 filas para hacer visible la regla.
+La misma transición se verificó con `carga_masiva_2M.xlsx` contra períodos que
+ya estaban finalizados: las **2,000,000** filas terminaron con
+`PeriodoYaCargado`, se auditaron como **2,000,000** registros y la carga pasó
+a `Rechazada` sin publicar una notificación.
+
+La medición separó los dos tramos para no mezclar transporte y trabajo de
+negocio:
+
+| Tramo | Resultado |
+|---|---:|
+| `POST /cargas` hasta `201 Created` | 6.211525 s |
+| `fechaRegistro` hasta `fechaFin` de CargaMasiva | 44.630308 s |
+| Tasa de este camino de rechazo | 44,813 filas/s |
+
+Este resultado **no** es throughput de inserción: ningún período fue libre,
+por lo que no se llamó al insert set-based. Sí confirma el coste y la
+trazabilidad del rechazo masivo. También expuso una consecuencia del contrato
+de detalle: pedir `GET /cargas/{id}?limiteErrores=1` superó 60 s porque la API
+calcula `totalErrores` exacto antes de devolver la página limitada. Para polling
+se debe usar el historial resumido; el detalle es una consulta puntual. La
+evidencia, condiciones y procedimiento reproducible están en
+[`../pruebas-de-escala.md`](../pruebas-de-escala.md).
+
 ## Puntos que suelen preguntar
 
 - **¿Por qué Control no valida el periodo, si es quien recibe la subida?**

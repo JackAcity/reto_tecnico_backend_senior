@@ -1,5 +1,6 @@
 using System.Text.Json;
-using CargaMasiva.Infrastructure;
+using BuildingBlocks;
+using CargaMasiva.Application;
 using Mensajeria;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

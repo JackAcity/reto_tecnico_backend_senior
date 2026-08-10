@@ -5,19 +5,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 namespace Mensajeria;
-
-public interface IPublicador
-{
-    /// <summary>
-    /// Publica y espera la confirmación del broker. Si un routing key no tiene
-    /// cola vinculada, esto lanza <see cref="RabbitMQ.Client.Exceptions.PublishReturnException"/>
-    /// (ver <see cref="PublicadorRabbit"/>) — el llamador ya debe tratar cualquier
-    /// excepción de este método como "no se pudo encolar" (§C7).
-    /// </summary>
-    Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default);
-}
 
 /// <summary>
 /// Publicador con <b>publisher confirms</b>. Con <c>publisherConfirmationTrackingEnabled</c>
@@ -36,7 +26,7 @@ public interface IPublicador
 /// se devolvió, sin tener que parsear el texto de la excepción.
 /// </summary>
 public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
-    : IPublicador, IAsyncDisposable
+    : IAsyncDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -47,22 +37,30 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
 
     public async Task PublicarAsync<T>(string routingKey, T mensaje, string correlationId, CancellationToken ct = default)
     {
-        var canal = await CanalAsync(ct);
-        var propiedades = new BasicProperties
+        try
         {
-            ContentType = "application/json",
-            DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
-            CorrelationId = correlationId,
-            MessageId = Guid.NewGuid().ToString("N"),
-            // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
-            // no hace falta reinventarlo dentro del JSON, que además el enunciado
-            // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
-            Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-        };
+            var canal = await CanalAsync(ct);
+            var propiedades = new BasicProperties
+            {
+                ContentType = "application/json",
+                DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
+                CorrelationId = correlationId,
+                MessageId = Guid.NewGuid().ToString("N"),
+                // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
+                // no hace falta reinventarlo dentro del JSON, que además el enunciado
+                // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            };
 
-        await canal.BasicPublishAsync(
-            Topologia.Exchange, routingKey, mandatory: true, propiedades,
-            JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
+            await canal.BasicPublishAsync(
+                Topologia.Exchange, routingKey, mandatory: true, propiedades,
+                JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
+
+        }
+        catch (RabbitMQClientException ex)
+        {
+            throw new FalloPublicacionRabbitException(ex.Message, ex);
+        }
     }
 
     private async Task<IChannel> CanalAsync(CancellationToken ct)
@@ -117,12 +115,16 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
     }
 }
 
+/// <summary>Fallo esperado del transporte RabbitMQ, traducido por el adaptador local.</summary>
+public sealed class FalloPublicacionRabbitException(string mensaje, Exception interna)
+    : Exception(mensaje, interna);
+
 public static class MensajeriaExtensiones
 {
     public static IServiceCollection AddMensajeria(this IServiceCollection servicios, IConfiguration config)
     {
         servicios.Configure<OpcionesRabbit>(config.GetSection("RabbitMq"));
-        servicios.AddSingleton<IPublicador, PublicadorRabbit>();
+        servicios.AddSingleton<PublicadorRabbit>();
         return servicios;
     }
 }

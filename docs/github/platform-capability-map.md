@@ -12,6 +12,8 @@ Este mapa traduce controles aprobados a candidatos GitHub. **PLATFORM CAPABILITY
 | CTL-009 | Artifact attestations, provenance, SBOM y verificación. | [SRC-GH-ATTEST](../sources/source-register.md) | Debe existir política de consumo; generar attestation no basta. |
 | CTL-010 | Environments, reviewers, no self-review, restricciones de rama/tag y secretos por environment. | [SRC-GH-ENV](../sources/source-register.md) | La segregación de deberes fuera de GitHub y el proveedor siguen siendo necesarios. |
 | CTL-011 | Historial de deployments/environments. | [Deployments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments) | No sustituye métricas, alertas ni rollback en runtime. |
+| CTL-015 | Reusable workflows con `workflow_call`; GitHub recomienda SHA para referencias externas por estabilidad/seguridad. | [SRC-GH-REUSABLE](../sources/source-register.md) | `secrets: inherit` y permisos efectivos requieren revisión explícita. |
+| CTL-001 | CODEOWNERS puede solicitar o exigir revisión, y debe protegerse a sí mismo. | [SRC-GH-CODEOWNERS](../sources/source-register.md) | Owners necesitan permisos válidos y no reemplazan rulesets/revisión de branch. |
 
 ## Observación del contexto actual
 

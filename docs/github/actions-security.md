@@ -7,6 +7,7 @@
 - Separar ejecución de código no confiable de jobs con secretos, permisos de escritura o identidad cloud.
 - Declarar permisos mínimos por job; una ausencia de necesidad no justifica escritura por defecto.
 - Inventariar acciones/reusable workflows, fijar referencias a identidad inmutable y revisar su actualización como cambio de dependencia.
+- Para workflows reutilizables, declarar inputs y secretos mínimos; `secrets: inherit` exige justificación de riesgo y nunca sustituye la política de permisos del llamador.
 - Proteger cambios a workflows, políticas y scripts de deployment con revisión apropiada al riesgo.
 - Tratar output, título, branch name, issue/PR metadata y artefactos externos como input no confiable.
 - No usar runners privilegiados/self-hosted para cargas no confiables sin diseño de aislamiento aprobado.

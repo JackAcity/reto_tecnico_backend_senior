@@ -13,6 +13,7 @@ Esta documentación define la fase de diseño de una arquitectura de entrega de 
 - [Matriz de evaluación](../evals/README.md): los escenarios que un auditor deberá detectar antes de acreditar un control.
 - [Gobernanza de agentes](agents/README.md): un agente genera candidatos; no es una fuente autónoma de confianza.
 - [ADR-0001](adr/ADR-0001-platform-neutral-control-model.md): decisión de separar control conceptual de adaptación de plataforma.
+- [Gate 1 — Architecture & Evidence Review](reviews/GATE-1-architecture-evidence-review.md): paquete de aprobación humana antes de cualquier workflow.
 
 ## Convenciones de afirmación
 

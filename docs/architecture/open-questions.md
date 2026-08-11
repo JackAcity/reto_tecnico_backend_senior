@@ -10,6 +10,9 @@
 | TBD-OPS-01 | Elegir observabilidad, SLOs, métricas DORA y estrategia de rollback. | Operación/producto | No puede verificarse recuperación ni entrega. | Controles de runtime. |
 | TBD-AGENT-01 | Aprobar usos permitidos de agentes, datos prohibidos, revisores y trazabilidad. | Seguridad + ingeniería | Agentes pueden recibir o producir cambios sin gobernanza. | Habilitación de agentes. |
 | TBD-EXC-01 | Definir quién acepta excepciones, duración máxima y escalamiento. | Riesgo | Las excepciones se vuelven permanentes y opacas. | Activación de gates. |
+| TBD-SCM-01 | Decidir mainline/trunk, rol de `develop`, cadencia de integración y vida máxima de ramas. | Ingeniería + producto | No se puede afirmar alineación con evidencia DORA ni diseñar reglas proporcionadas. | CTL-001, CTL-002 y CTL-003. |
+| TBD-DELIVERY-01 | Determinar si algún servicio de alto riesgo justifica progressive delivery y qué runtime/telemetría lo soporta. | Operación + dueño de riesgo | Canary/blue-green podría ser teatro o faltar mitigación de blast radius. | CTL-014. |
+| TBD-REUSABLE-01 | Decidir si los workflows reutilizables serán locales, organizacionales o de terceros, y su política de acceso/versionado. | Plataforma + seguridad | Se pueden propagar secretos o referencias mutables a escala. | CTL-015. |
 
 ## Decisión de parada
 

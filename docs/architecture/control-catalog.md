@@ -17,6 +17,8 @@ La fuente de verdad legible por máquina es [control-catalog.v0.1.yaml](control-
 | CTL-011 | Recuperación y observabilidad | Release fallido sin diagnóstico/rollback | Medio/alto | Integración runtime, deployments, logs | Drill de rollback y consulta de evidencia. |
 | CTL-012 | Gobernanza de agentes | Agente se auto-confía o fuga datos | Todos | AGENTS/skills + branch governance | Caso de agente no puede ser único verificador/aprobador. |
 | CTL-013 | Cambios de datos e IaC | Cambio irrevertible o infraestructura insegura | Medio/alto | Checks y environments futuros | Caso de migración/IaC sin plan no promueve. |
+| CTL-014 | Estrategia de promoción | Blast radius desproporcionado | Alto cuando aplica | Environment + proveedor externo | Caso canary/rollback y caso not-applicable. |
+| CTL-015 | Reusable workflows gobernados | Secreto/permiso heredado o ref mutable | Cuando se reutilicen | `workflow_call` con contrato explícito | Fixture de SHA/secret explícito frente a `inherit` injustificado. |
 
 ## Lectura de la cadena de control
 

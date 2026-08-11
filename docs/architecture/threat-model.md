@@ -25,6 +25,13 @@ El modelo cubre la cadena desde intención de cambio hasta runtime. Usa activos,
 - Colaborador malicioso, atacante externo, dependencia/acción comprometida y PR no confiable.
 - Auditor/verificador, que debe poder observar sin depender de la identidad que produjo el cambio.
 
+## Puntos de entrada
+
+- Commit, pull request, comentario/metadata, trigger manual y cambio de configuración de SCM.
+- Archivo de workflow, action/reusable workflow, dependencia, lockfile, artefacto y cache.
+- Input, secreto, token, claim OIDC, API de proveedor, manifest y endpoint de deployment.
+- Prompt, documento adjunto, salida de herramienta y diff producido por un agente.
+
 ## Rutas de amenaza y controles candidatos
 
 | ID | Escenario | Ruta de ataque | Impacto | Controles candidatos | Riesgo residual |

@@ -98,3 +98,17 @@ cases:
     expected_findings: ["missing rollback and recovery strategy"]
     must_not_claim: ["deployment is recoverable", "availability objective is met"]
     evidence_required: ["release record", "runbook", "rollback drill or explicit absence"]
+  - case_id: "EVAL-V-015"
+    scenario: "Un reusable workflow externo se referencia por rama mutable y recibe secrets: inherit sin contrato ni necesidad demostrada."
+    expected_control: "CTL-015"
+    expected_status: "fail"
+    expected_findings: ["reusable workflow has mutable identity and unjustified implicit secret inheritance"]
+    must_not_claim: ["workflow is safe because it is shared", "all inherited secrets are required"]
+    evidence_required: ["caller and reusable workflow definitions", "reference identity", "effective secrets and permissions"]
+  - case_id: "EVAL-V-016"
+    scenario: "Un cambio de alto riesgo se libera globalmente sin decisión de estrategia, señales de abortar o rollback probado."
+    expected_control: "CTL-014"
+    expected_status: "fail"
+    expected_findings: ["high-risk release lacks an evaluated promotion and recovery strategy"]
+    must_not_claim: ["canary is mandatory for every deployment", "release is safe because it is rolling"]
+    evidence_required: ["risk classification", "release strategy decision", "health signals", "rollback evidence"]

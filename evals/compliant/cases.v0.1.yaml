@@ -21,3 +21,17 @@ cases:
     expected_findings: []
     must_not_claim: ["artifact has no vulnerabilities", "SLSA level is achieved without formal assessment"]
     evidence_required: ["digest", "verification output", "environment approval", "deployment/rollback events"]
+  - case_id: "EVAL-C-004"
+    scenario: "Cambio reversible de riesgo medio se promueve con rolling controlado, health y rollback; la decisión documenta que progressive delivery no aplica."
+    expected_control: "CTL-014"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["canary or blue-green are required", "the system has zero deployment risk"]
+    evidence_required: ["risk classification", "strategy decision", "health and rollback result"]
+  - case_id: "EVAL-C-005"
+    scenario: "Reusable workflow local se invoca desde el mismo commit con inputs/secrets explícitos y permisos mínimos revisados."
+    expected_control: "CTL-015"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["all reusable workflows are safe", "the caller may grant unlimited permissions"]
+    evidence_required: ["workflow_call contract", "caller definition", "effective permissions and secret inventory"]

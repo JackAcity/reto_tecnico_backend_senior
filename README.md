@@ -271,6 +271,8 @@ frontend/             cliente React opcional
 
 ## Documentación de apoyo
 
+- [Contrato y arranque para agentes](AGENTS.md)
+- [Evaluación transparente de agentes y práctica de entrevista](docs/evaluacion-agentes.md)
 - [Enunciado original](docs/RETO-ORIGINAL.md)
 - [Guía de diagramas para la defensa técnica](docs/explicacion/README.md)
 - [Pruebas de escala y límites comprobados](docs/pruebas-de-escala.md)

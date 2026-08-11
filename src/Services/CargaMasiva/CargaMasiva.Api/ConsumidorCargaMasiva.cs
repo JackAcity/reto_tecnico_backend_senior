@@ -12,18 +12,14 @@ using Serilog.Context;
 namespace CargaMasiva.Api;
 
 /// <summary>
-/// El núcleo del reto (§3️⃣). Prefetch 1: cada carga puede ser un archivo grande,
-/// no tiene sentido bajar N a la vez. Ack manual: solo se confirma cuando
-/// <see cref="ManejadorCarga"/> terminó sin excepción — si el proceso muere a
-/// mitad de camino, el mensaje vuelve a la cola (§C8, el consumidor es idempotente
-/// vía la clave de negocio y el chequeo de estado).
+/// Consume una carga a la vez y confirma sólo al terminar, para permitir reentregas idempotentes.
 /// </summary>
 public sealed class ConsumidorCargaMasiva(
     IServiceScopeFactory scopeFactory,
     IOptions<OpcionesRabbit> opciones,
     ILogger<ConsumidorCargaMasiva> log) : BackgroundService
 {
-    /// <summary>Intentos sobre <c>carga_masiva</c> antes de darse por vencido y mandar a la cola de muertos.</summary>
+    /// <summary>Reintentos antes de enviar el mensaje a la cola de muertos.</summary>
     public const int MaxIntentos = 3;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -52,8 +48,7 @@ public sealed class ConsumidorCargaMasiva(
 
         await _canal.BasicConsumeAsync(Topologia.ColaCarga, autoAck: false, consumidor, ct);
 
-        // BasicConsumeAsync no bloquea: el propio BackgroundService debe quedar
-        // vivo mientras el host corra, entregando el control al consumidor por evento.
+        // El consumidor entrega por evento; el servicio debe permanecer activo.
         await Task.Delay(Timeout.InfiniteTimeSpan, ct);
     }
 
@@ -84,13 +79,8 @@ public sealed class ConsumidorCargaMasiva(
 
             if (intentos + 1 >= MaxIntentos)
             {
-                // Un nack normal volvería a mandarlo al ciclo de reintento (DLX ->
-                // TTL -> de vuelta a esta misma cola). Se publica a mano en la cola
-                // de muertos para cortar el ciclo, y se audita en carga_archivo en
-                // vez de dejar la carga colgada sin explicación.
-                // BasicPublishAsync exige BasicProperties (mutable); la entrega solo
-                // trae IReadOnlyBasicProperties, así que se copian los campos que
-                // importan para diagnosticar el mensaje en la cola de muertos.
+                // Publicar en la cola de muertos detiene el ciclo de TTL y reintento.
+                // RabbitMQ exige propiedades mutables al republicar la entrega.
                 var propiedades = new BasicProperties
                 {
                     ContentType = ea.BasicProperties.ContentType,
@@ -121,8 +111,7 @@ public sealed class ConsumidorCargaMasiva(
         var db = alcance.ServiceProvider.GetRequiredService<Persistencia.RetoDbContext>();
         var carga = await db.CargaArchivos.FindAsync([idCarga], ct);
 
-        // Puede que ya haya transicionado a un estado terminal en un intento previo
-        // (poco probable, pero MaquinaEstados.Validar lanzaría si se fuerza igual).
+        // Una reentrega puede llegar después de que otro intento alcance un estado terminal.
         if (carga is { Estado: CargaMasiva.Domain.EstadoCarga.Pendiente or CargaMasiva.Domain.EstadoCarga.EnProceso })
         {
             carga.Transicionar(CargaMasiva.Domain.EstadoCarga.Fallida);

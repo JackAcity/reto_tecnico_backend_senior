@@ -22,27 +22,24 @@ public interface IEmisorAccessToken
     TokenAcceso Emitir(Usuario usuario, DateTimeOffset ahora);
 }
 
-/// <summary>
-/// Emisión y rotación de credenciales (§2.3). Fuera de los endpoints para que la
-/// rotación —que es la parte con reglas de verdad— sea testeable sin levantar HTTP.
-/// </summary>
+/// <summary>Emite y rota credenciales sin depender del transporte HTTP.</summary>
 public sealed class ServicioAutenticacion(
     IRepositorioUsuarios repositorio,
     IProtectorContrasenas contrasenas,
     IEmisorAccessToken emisor)
 {
-    /// <summary>Claim de permiso. El gateway lo exige en la ruta de carga (§3.2a).</summary>
+    /// <summary>Nombre del claim que autoriza la carga masiva.</summary>
     public const string ClaimPermiso = "permiso";
     public const string PermisoCargaMasiva = "carga:masiva";
 
-    /// <summary>Qué habilita cada rol. Un solo lugar donde mirar cuando el evaluador pregunte.</summary>
+    /// <summary>Permisos concedidos a cada rol.</summary>
     public static string[] PermisosDe(string rol) => rol switch
     {
         "administrador" or "operador" => [PermisoCargaMasiva],
         _ => []
     };
 
-    /// <summary>Devuelve null ante credenciales inválidas — sin distinguir usuario inexistente de contraseña incorrecta.</summary>
+    /// <summary>No distingue usuario inexistente de contraseña incorrecta.</summary>
     public async Task<ResultadoAutenticacion?> LoginAsync(string email, string password, CancellationToken ct = default)
     {
         var usuario = await repositorio.ObtenerPorEmailActivoAsync(email, ct);
@@ -57,24 +54,19 @@ public sealed class ServicioAutenticacion(
         if (verificacion == VeredictoContrasena.Fallida)
             return null;
 
-        // El hash quedó con parámetros viejos: se actualiza aprovechando que la
-        // contraseña en claro está disponible justo en este punto y en ningún otro.
+        // Rehash sólo mientras la contraseña en claro está disponible.
         if (verificacion == VeredictoContrasena.RehashNecesario)
             usuario.PasswordHash = contrasenas.Hash(usuario, password);
 
         return await EmitirAsync(usuario, anterior: null, ct);
     }
 
-    /// <summary>
-    /// §2.3d — rotación: el refresh usado se revoca y queda encadenado al que lo
-    /// reemplaza, así el historial es auditable.
-    /// </summary>
+    /// <summary>Rota el refresh token y enlaza el reemplazo para auditoría.</summary>
     public async Task<ResultadoAutenticacion?> RefrescarAsync(string refreshToken, CancellationToken ct = default)
     {
         var token = await repositorio.ObtenerRefreshTokenConUsuarioAsync(refreshToken, ct);
 
-        // ponytail: un token ya revocado solo devuelve 401. La detección de reuso
-        // (revocar toda la cadena ante un token viejo) se agrega si el alcance crece.
+        // Un token revocado recibe la misma respuesta que una credencial inválida.
         if (token is null || !token.EstaActivo(DateTimeOffset.UtcNow) || token.Usuario is not { Activo: true })
             return null;
 
@@ -88,12 +80,7 @@ public sealed class ServicioAutenticacion(
 
         if (anterior is not null)
         {
-            // Rotación atómica (design.md §C18): dos refresh simultáneos con el mismo
-            // token leerían ambos "activo" antes de que cualquiera escriba — un UPDATE
-            // por PK sin guarda dejaría que el segundo pise el ReemplazadoPor del
-            // primero (lost update). El WHERE revocado_en IS NULL es el compare-and-swap
-            // que decide atómicamente quién ganó, igual criterio que sp_resolver_periodo
-            // (§C9) pero sin necesitar advisory lock: es una sola fila, un solo UPDATE.
+            // El update condicional evita que dos refresh roten el mismo token.
             var filas = await repositorio.RevocarSiActivoAsync(anterior.Id, nuevoToken, ahora, ct);
 
             if (filas == 0)

@@ -16,11 +16,10 @@ builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
 builder.Services.AddScoped<IConsultaCargas, ConsultaCargasEf>();
 builder.Services.AddScoped<IAlmacenCargas, AlmacenCargasSeaweedFs>();
 builder.Services.AddScoped<IPublicadorCargas, PublicadorCargasRabbit>();
-builder.Services.AddScoped<ServicioCargas>();   // comando: §2️⃣, escritura
-builder.Services.AddScoped<ConsultaCargas>();   // consulta: §5️⃣, solo lectura
+builder.Services.AddScoped<ServicioCargas>();
+builder.Services.AddScoped<ConsultaCargas>();
 
-// §C12 — los mismos tres techos que el gateway, porque Control también puede
-// recibir tráfico directo dentro de la red de contenedores.
+// Control mantiene el mismo techo de transporte que el gateway para tráfico interno.
 var tamanoMaximoMb = builder.Configuration.GetValue("Carga:TamanoMaximoMb", 25);
 var limiteTransporte = (tamanoMaximoMb + 1L) * 1024 * 1024;
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = limiteTransporte);
@@ -31,13 +30,11 @@ app.UseServiceDefaults("Control");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Control es el único dueño del esquema (design.md §C11). Migra antes de atender
-// tráfico: los demás servicios esperan por su health check, así que cuando responden
-// 200 la base ya está lista.
+// El dueño del esquema migra antes de declarar el servicio disponible.
 await app.Services.MigrarAsync();
 
-// §2️⃣ — subida. El permiso ya lo exigió el gateway; se vuelve a exigir acá porque
-// el usuario auditado sale del token y no de una cabecera que cualquiera podría poner.
+// El servicio vuelve a exigir el permiso porque el usuario auditado proviene del token.
+// La autenticación usa bearer tokens, no cookies.
 app.MapPost("/cargas", async (
     [FromForm] IFormFile? archivo,
     ServicioCargas servicio,
@@ -50,9 +47,6 @@ app.MapPost("/cargas", async (
 
     await using var contenido = archivo!.OpenReadStream();
 
-    // La extensión la controla el cliente; esto valida que el contenido en sí
-    // empiece como zip, para no gastar SeaweedFS + una cola + un ciclo de
-    // CargaMasiva en un archivo que iba a fallar de todos modos.
     var errorFirma = await ServicioCargas.ValidarFirmaAsync(contenido, ct);
     if (errorFirma is not null)
         return Results.ValidationProblem(new Dictionary<string, string[]> { ["archivo"] = [errorFirma] });
@@ -63,30 +57,25 @@ app.MapPost("/cargas", async (
 
     var resultado = await servicio.RegistrarAsync(contenido, archivo.FileName, archivo.Length, usuario, correlationId, ct);
 
-    // La carga quedó registrada y auditada aunque el encolado falle (§C7): por eso
-    // el 502 también devuelve el idCarga, que ya es consultable en el historial.
+    // El id queda disponible para auditoría aunque falle el encolado.
     return resultado.Error is null
         ? Results.Created($"/cargas/{resultado.IdCarga}", resultado)
         : Results.Json(resultado, statusCode: StatusCodes.Status502BadGateway);
 })
 .RequireAuthorization(Autenticacion.PoliticaCargaMasiva)
-.DisableAntiforgery();   // API con Bearer, sin cookies: el token antiforgery no aplica
+.DisableAntiforgery();
 
-// §5️⃣ — historial para el cliente web y para el polling de estados.
 app.MapGet("/cargas", async (ConsultaCargas consulta, CancellationToken ct, int limite = 50) =>
         Results.Ok(await consulta.HistorialAsync(Math.Clamp(limite, 1, 200), ct)))
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
-// §3.3c — detalle con los periodos resueltos y los fallidos auditados.
 app.MapGet("/cargas/{id:int}", async (int id, ConsultaCargas consulta, CancellationToken ct, int limiteErrores = 100) =>
         await consulta.DetalleAsync(id, Math.Clamp(limiteErrores, 1, 1000), ct) is { } detalle
             ? Results.Ok(detalle)
             : Results.NotFound(new { title = "Carga no encontrada", idCarga = id }))
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
-// §2.1e — "consultar el contenido del archivo excel subido": reproxea el .xlsx
-// original desde SeaweedFS. Control ya es quien habla con el filer; el cliente
-// nunca necesita conocer la ruta seaweed:// directamente.
+// El endpoint no expone la ruta interna del almacenamiento.
 app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenArchivos almacen, CancellationToken ct) =>
 {
     var archivo = await consulta.ArchivoAsync(id, ct);

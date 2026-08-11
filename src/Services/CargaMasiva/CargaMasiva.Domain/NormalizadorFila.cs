@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace CargaMasiva.Domain;
 
-/// <summary>Motivo por el que una fila se descartó o se ajustó. Se persiste en detalle_carga_error (§3.3c).</summary>
+/// <summary>Motivo por el que una fila se descarta o ajusta.</summary>
 public enum MotivoRechazo
 {
     PeriodoYaCargado,
@@ -33,10 +33,7 @@ public sealed record FilaRechazada(int NumeroFila, string? Periodo, string? Codi
 
 public sealed record ResultadoNormalizacion(FilaProducto? Fila, IReadOnlyList<FilaRechazada> Observaciones, bool Descartada);
 
-/// <summary>
-/// Reglas de limpieza del §3.3e/f: columna vacía → valor por defecto,
-/// fila vacía → no se registra. Lógica pura: sin base de datos, sin Excel, sin red.
-/// </summary>
+/// <summary>Normaliza filas sin depender de Excel, red ni persistencia.</summary>
 public static class NormalizadorFila
 {
     public const string NombrePorDefecto = "SIN NOMBRE";
@@ -44,8 +41,6 @@ public static class NormalizadorFila
 
     public static ResultadoNormalizacion Normalizar(FilaCruda cruda)
     {
-        // "Si hay filas vacías en el archivo no se deben registrar" — se descartan
-        // en silencio: no son un error del usuario, son relleno del archivo.
         if (cruda.EstaVacia)
             return new ResultadoNormalizacion(null, [], Descartada: true);
 
@@ -63,7 +58,7 @@ public static class NormalizadorFila
         if (string.IsNullOrWhiteSpace(codigo))
             return Descartar(cruda, nameof(cruda.CodigoProducto), MotivoRechazo.CodigoRequerido, cruda.CodigoProducto);
 
-        // Columna vacía → valor por defecto. La fila SÍ se inserta; el ajuste se audita.
+        // Los valores por defecto se insertan, pero quedan registrados como observación.
         var nombre = cruda.NombreProducto?.Trim();
         if (string.IsNullOrWhiteSpace(nombre))
         {
@@ -81,15 +76,14 @@ public static class NormalizadorFila
         }
         else if (!decimal.TryParse(cruda.Precio.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out precio))
         {
-            // No numérico se trata como vacío: el enunciado pide valor por defecto ante
-            // ausencia de dato, y un texto en columna numérica es ausencia de dato válido.
+            // Un valor no numérico equivale a un precio no utilizable y usa el valor por defecto.
             precio = PrecioPorDefecto;
             observaciones.Add(new FilaRechazada(cruda.NumeroFila, periodo, codigo,
                 nameof(cruda.Precio), MotivoRechazo.ValorPorDefectoAplicado, cruda.Precio));
         }
         else if (precio < 0)
         {
-            // Un precio negativo sí es un dato presente y erróneo: se descarta la fila.
+            // Un precio negativo es inválido; no se corrige silenciosamente.
             return Descartar(cruda, nameof(cruda.Precio), MotivoRechazo.PrecioInvalido, cruda.Precio);
         }
 
@@ -99,7 +93,6 @@ public static class NormalizadorFila
             Descartada: false);
     }
 
-    // yyyy-MM. El archivo de muestra usa "2025-01", "2025-02", "2025-03".
     public static bool EsPeriodoValido(string periodo) =>
         DateTime.TryParseExact(periodo, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 

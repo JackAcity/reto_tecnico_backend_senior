@@ -4,6 +4,19 @@ Quién le habla a quién, y por qué protocolo. Flechas sólidas = HTTP síncron
 flechas punteadas = mensaje asíncrono por RabbitMQ.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'background': '#0d1117',
+  'primaryColor': '#161b22',
+  'primaryTextColor': '#f0f6fc',
+  'primaryBorderColor': '#58a6ff',
+  'secondaryColor': '#21262d',
+  'tertiaryColor': '#161b22',
+  'lineColor': '#8b949e',
+  'textColor': '#f0f6fc',
+  'clusterBkg': '#0d1117',
+  'clusterBorder': '#30363d',
+  'edgeLabelBackground': '#0d1117'
+}}}%%
 flowchart TB
     Cliente["Cliente / Postman"]
 
@@ -44,8 +57,8 @@ flowchart TB
 
     Auth -->|"siembra/valida usuario"| PG
 
-    style GW fill:#dae8fc,stroke:#6c8ebf
-    style CM fill:#ffe6cc,stroke:#d79b00
+    style GW fill:#1f6feb,stroke:#58a6ff,color:#ffffff,stroke-width:2px
+    style CM fill:#825b00,stroke:#f2cc60,color:#ffffff,stroke-width:2px
 ```
 
 ## Por qué el Gateway es el único punto público

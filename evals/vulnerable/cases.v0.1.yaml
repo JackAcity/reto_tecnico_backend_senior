@@ -43,12 +43,12 @@ cases:
     must_not_claim: ["action version is immutable", "pinning alone proves supply-chain safety"]
     evidence_required: ["workflow reference", "policy requiring immutable identity"]
   - case_id: "EVAL-V-007"
-    scenario: "Un archivo contiene CREDENTIAL_EXAMPLE=not-a-real-secret-but-hardcoded."
+    scenario: "Un archivo contiene material sintético similar a una credencial y no existe respuesta de detección o remediación."
     expected_control: "CTL-005"
     expected_status: "fail"
     expected_findings: ["hardcoded credential pattern or missing detector response"]
-    must_not_claim: ["a real credential was exposed", "repository is secret-free without scan evidence"]
-    evidence_required: ["synthetic fixture location", "detector result and response record"]
+    must_not_claim: ["a real credential was exposed", "any arbitrary string must trigger every detector", "repository is secret-free without scan evidence"]
+    evidence_required: ["synthetic fixture location", "detector-compatible fixture specification for the selected adapter", "detector result and response record"]
   - case_id: "EVAL-V-008"
     scenario: "Un cambio introduce una dependencia vulnerable y no existe revisión/gestión de dependencia."
     expected_control: "CTL-004"

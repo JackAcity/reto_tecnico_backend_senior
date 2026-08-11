@@ -47,6 +47,12 @@ El registro legible por máquina de cada control añade `cost_and_friction` con
 aplicable: obliga a que su dueño compare explícitamente el riesgo residual con la
 alternativa, la excepción temporal o el cambio de alcance.
 
+Cada entrada también separa `applicability` (trigger por superficie) de
+`execution_depth` (estrictez proporcional al perfil de riesgo). La clasificación de
+riesgo no es un interruptor global de controles: una modificación de dependencia,
+secreto, workflow, runner, DB o IaC puede activar su control específico incluso si el
+cambio completo resulta de riesgo bajo.
+
 ## Perfiles de riesgo
 
 La clasificación se realiza con la [rúbrica v0.1](risk-classification.v0.1.md),

@@ -4,8 +4,8 @@
 
 Esta rúbrica hace repetible la asignación inicial de perfil para un cambio. No es una
 certificación, no sustituye una evaluación de seguridad y no permite rebajar el
-riesgo por conveniencia. Aplica antes de seleccionar controles de entrega, no después
-de configurar una plataforma.
+riesgo por conveniencia. Aplica antes de seleccionar la profundidad de los controles
+de entrega, no después de configurar una plataforma.
 
 ## Factores y puntuación
 
@@ -37,6 +37,19 @@ Un revisor puede elevar el resultado ante evidencia nueva. Un resultado más baj
 solo puede aceptarse mediante una excepción temporal que deje visible la puntuación,
 el riesgo residual, controles compensatorios, dueño y vencimiento.
 
+## Riesgo no equivale a aplicabilidad de control
+
+La clasificación responde **cuán peligroso es el cambio en conjunto**. No decide por
+sí sola qué controles se ejecutan. Cada control define además:
+
+1. un **trigger de aplicabilidad**, según la superficie modificada (por ejemplo,
+   dependencia, lockfile, workflow, runner, secreto, DB o IaC); y
+2. una **profundidad de ejecución**, proporcionada al perfil de riesgo.
+
+Por tanto, un cambio globalmente bajo puede activar CTL-004 si modifica un manifest,
+lockfile o toolchain. El perfil bajo limita la profundidad de revisión/evidencia; no
+borra la obligación de gobernar esa superficie de supply chain.
+
 ## Autoridad y evidencia mínima
 
 | Paso | Autoridad propuesta | Evidencia mínima |
@@ -55,6 +68,6 @@ antes de activar controles de promoción.
 | Cambio | Resultado | Motivo |
 | --- | --- | --- |
 | Corrección de documentación sin artefacto ejecutable. | Bajo. | Reversible, sin datos ni runtime. |
-| Actualización de paquete en un servicio no productivo. | Medio. | Dependencia y superficie de build cambian; requiere CTL-004 y CI. |
+| Actualización de paquete en un servicio no productivo. | Bajo o medio según los ocho factores. | CTL-004 aplica por la superficie de supply chain; el perfil determina profundidad de revisión, evidencia y excepción. |
 | Migración de esquema con datos de cliente. | Alto. | Persistencia e irreversibilidad potencial; exige CTL-013, recuperación y autorización proporcional. |
 | Cambio de rol OIDC que permite desplegar producción. | Alto. | IAM y acceso de producción son gatillos altos. |

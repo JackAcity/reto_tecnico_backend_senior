@@ -7,24 +7,43 @@ el enunciado (no que lo copiaste) y te va a hacer preguntas trampa (dos
 caminos válidos, ¿por qué elegiste este?). Cada diagrama de acá está armado
 para esa conversación, no para explicar "qué hace el código".
 
+## Galería visual renderizable en GitHub
+
+Los diagramas siguientes son la vista que se renderiza directamente al abrir el
+repositorio. Cuando corresponde, el enlace a Draw.io conserva la fuente
+editable para una presentación o una modificación posterior.
+
+| # | Diagrama | Pregunta que responde | Fuente editable |
+|---:|---|---|---|
+| 1 | [Arquitectura](01-arquitectura.md) | ¿Qué componentes existen y cómo se comunican? | [HTML](01-arquitectura.html) |
+| 2 | [Flujo de carga](02-flujo-carga.md) | ¿Cómo pasa una carga de HTTP a correo? | [Draw.io](02-flujo-feliz.drawio) |
+| 3 | [Máquina de estados](03-maquina-estados.md) | ¿Qué transiciones son válidas y cuáles son terminales? | [Draw.io](04-maquina-estados.drawio) |
+| 4 | [Dependencias DIP](04-dependencias-dip.md) | ¿Qué referencias están permitidas y cuáles están prohibidas? | — |
+| 5 | [Datos y propiedad](05-datos-y-propiedad.md) | ¿Quién escribe cada dato y cómo se conserva la consistencia? | [Draw.io](05-modelo-datos.drawio) |
+| 6 | [Mensajería y reintentos](06-mensajeria-y-reintentos.md) | ¿Qué pasa con un mensaje que falla? | [Draw.io](06-mensajeria.drawio) |
+| 7 | [Seguridad](07-seguridad-y-autorizacion.md) | ¿Cómo se autentica y autoriza cada operación? | [Draw.io](07-seguridad-jwt.drawio) |
+| 8 | [Despliegue local](08-despliegue-local.md) | ¿Qué queda expuesto y qué queda en la red interna? | [Draw.io](08-despliegue-docker.drawio) |
+| 9 | [Escala y observabilidad](09-escala-y-observabilidad.md) | ¿Qué rendimiento se comprobó y cuál es el límite actual? | — |
+
 ## Orden de lectura (general → detalle)
 
 | # | Diagrama | Responde | Si te preguntan... |
-|---|---|---|---|
-| 1 | [`01-arquitectura.html`](01-arquitectura.html) | ¿Qué componentes hay y cómo se hablan? | "Dibujame la arquitectura" — punto de partida de casi cualquier entrevista |
-| 2 | [`00-mapa-de-caminos.md`](00-mapa-de-caminos.md) | Lista completa de ~35 escenarios, con dónde está probado cada uno | "¿Qué pasa si...?" — la pregunta trampa más común, ya la tenés tabulada |
-| 3 | [`02-flujo-feliz.drawio`](02-flujo-feliz.drawio) | Secuencia completa, request → correo, con SPs y colas exactas | "Caminá conmigo un request de punta a punta" |
-| 4 | [`03-flujo-rechazo.drawio`](03-flujo-rechazo.drawio) | Qué cambia (y qué NO) cuando el mismo periodo se sube dos veces | "¿Y si subo el mismo archivo dos veces?" — la comparación, no una lista separada |
-| 5 | [`04-maquina-estados.drawio`](04-maquina-estados.drawio) | 8 estados, transiciones cerradas, por qué 3 terminales sin `Notificado` | "¿Por qué no simplificaste a menos estados?" |
-| 6 | [`05-modelo-datos.drawio`](05-modelo-datos.drawio) | Las 6 tablas, FKs, y quién tiene **propiedad de escritura** de cada una | "¿No debería ser database-per-service?" (C10) |
-| 7 | [`06-mensajeria.drawio`](06-mensajeria.drawio) | Topología real de RabbitMQ: 2 exchanges, 6 colas, TTL de reintento, DLX | "¿Qué pasa si un mensaje falla 10 veces?" / "¿por qué no Kafka?" (C17) |
-| 8 | [`07-seguridad-jwt.drawio`](07-seguridad-jwt.drawio) | Login → claims → validación en 2 capas → rotación de refresh | "Mostrame cómo evitás que alguien escale privilegios" |
-| 9 | [`08-despliegue-docker.drawio`](08-despliegue-docker.drawio) | Qué puerto es público, qué es solo red interna, non-root, volúmenes | "¿Cómo lo asegurarías en producción?" |
+|---:|---|---|---|
+| 1 | [Arquitectura](01-arquitectura.md) | ¿Qué componentes hay y cómo se hablan? | "Dibujame la arquitectura" — punto de partida de casi cualquier entrevista. |
+| 2 | [Mapa de caminos](00-mapa-de-caminos.md) | ¿Qué escenarios existen y dónde se prueban? | "¿Qué pasa si...?" — la respuesta tiene escenario y test asociado. |
+| 3 | [Flujo de carga](02-flujo-carga.md) | ¿Cómo recorre una solicitud el sistema hasta el correo? | "Caminá conmigo un request de punta a punta". |
+| 4 | [Máquina de estados](03-maquina-estados.md) | ¿Qué transiciones están cerradas y cuáles son terminales? | "¿Por qué no simplificaste a menos estados?". |
+| 5 | [Dependencias DIP](04-dependencias-dip.md) | ¿Dónde se corta el acoplamiento técnico? | "¿Cómo impides Domain → Infrastructure?". |
+| 6 | [Datos y propiedad](05-datos-y-propiedad.md) | ¿Qué guarda cada tabla y quién la modifica? | "¿No debería ser database-per-service?" (C10). |
+| 7 | [Mensajería](06-mensajeria-y-reintentos.md) | ¿Cómo operan retry, TTL y DLQ? | "¿Qué pasa si un mensaje falla repetidamente?". |
+| 8 | [Seguridad](07-seguridad-y-autorizacion.md) | ¿Cómo se emiten tokens y se autorizan rutas? | "¿Cómo evitas escalar privilegios?". |
+| 9 | [Despliegue](08-despliegue-local.md) | ¿Qué puertos son públicos y cómo arranca el stack? | "¿Cómo lo operarías en local?". |
+| 10 | [Escala](09-escala-y-observabilidad.md) | ¿Qué volumen se midió y cuál es el límite? | "¿Qué pasa a 5 millones de filas?". |
 
-`01`, `02`, `03` ya tenían versión Mermaid (`.md` con el mismo número) —
-quedan como respaldo de texto. `02`–`08` son `.drawio` (pantalla compartida
-o pizarra vía la app draw.io). `01` es HTML autocontenido — abre directo en
-cualquier navegador, sin instalar nada, mismo uso para pantalla compartida.
+Los archivos Markdown son la vista renderizable en GitHub. Los enlaces Draw.io
+de la galería anterior siguen siendo las fuentes editables para pizarra o
+presentación; `01-arquitectura.html` es una alternativa autocontenida para
+abrir directamente en un navegador.
 
 ## Las 17 decisiones documentadas (C1–C17)
 
@@ -33,8 +52,9 @@ No están acá — viven en
 con la cita exacta del enunciado que genera cada contradicción y la evidencia
 que sostiene la resolución elegida. **Es la fuente más probable de preguntas
 trampa** porque cada una es un punto donde el enunciado es ambiguo o
-contradictorio a propósito — el evaluador sabe que están ahí. Resumen en la
-tabla del [`README.md`](../../README.md#decisiones-de-diseño) raíz.
+contradictorio a propósito — el evaluador sabe que están ahí. El
+[README raíz](../../README.md#decisiones-que-importan) resume las decisiones
+operativas; el diseño conserva el detalle completo.
 
 Las que más se prestan a "¿y si en vez de X hubieras hecho Y?":
 

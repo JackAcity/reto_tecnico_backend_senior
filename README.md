@@ -77,6 +77,25 @@ La regla es deliberada: **Domain no referencia Infrastructure**, Application dep
 
 La solución usa una instancia de PostgreSQL para el reto, con propiedad de escritura y esquema protegidos por servicio. No se presenta como una implementación de *database per service*: esa alternativa tendría costes de consistencia, migración y operación que no están justificados por el alcance actual. La decisión y sus consecuencias están documentadas en el [diseño](openspec/changes/carga-masiva-microservicios/design.md).
 
+## Galería visual
+
+Los diagramas están escritos en Mermaid para que GitHub los renderice al abrir
+el repositorio; donde existe, el archivo Draw.io enlazado conserva la fuente
+editable. La [guía visual completa](docs/explicacion/README.md) propone el
+orden de lectura y explica qué evidencia aporta cada gráfico.
+
+| Quiero entender… | Diagrama |
+|---|---|
+| Componentes, protocolos y borde público | [Arquitectura](docs/explicacion/01-arquitectura.md) |
+| Camino feliz y rechazo de un archivo | [Flujo de carga](docs/explicacion/02-flujo-carga.md) |
+| Estados y transiciones válidas | [Máquina de estados](docs/explicacion/03-maquina-estados.md) |
+| Inversión de dependencias y responsabilidad de capas | [Dependencias DIP](docs/explicacion/04-dependencias-dip.md) |
+| Entidades, propiedad de datos y consistencia | [Datos y propiedad](docs/explicacion/05-datos-y-propiedad.md) |
+| Colas, TTL, reintentos y DLQ | [Mensajería](docs/explicacion/06-mensajeria-y-reintentos.md) |
+| Login, JWT, permisos y cuotas | [Seguridad](docs/explicacion/07-seguridad-y-autorizacion.md) |
+| Red Docker, puertos y health checks | [Despliegue](docs/explicacion/08-despliegue-local.md) |
+| Capacidad medida y límite de 5M | [Escala y observabilidad](docs/explicacion/09-escala-y-observabilidad.md) |
+
 ## Puesta en marcha
 
 ### Requisitos

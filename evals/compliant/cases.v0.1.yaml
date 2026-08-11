@@ -35,3 +35,73 @@ cases:
     expected_findings: []
     must_not_claim: ["all reusable workflows are safe", "the caller may grant unlimited permissions"]
     evidence_required: ["workflow_call contract", "caller definition", "effective permissions and secret inventory"]
+  - case_id: "EVAL-C-006"
+    scenario: "Un cambio ejecutable de rama corta ejecuta la definición versionada de build y tests; commit, lockfiles, toolchain, resultados y artefacto identificable quedan enlazados."
+    expected_control: "CTL-002"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["build is bit-for-bit reproducible", "repository follows a mandatory DORA topology"]
+    evidence_required: ["commit", "versioned build definition", "toolchain/lockfile inputs", "build and test results"]
+  - case_id: "EVAL-C-007"
+    scenario: "Una prueba deliberadamente fallida hace fallar el check requerido de una rama confiable; una ejecución limpia del mismo conjunto permite la integración revisada."
+    expected_control: "CTL-003"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["tests prove absence of all defects", "every change needs the same test depth"]
+    evidence_required: ["failed test result", "rejected merge/check outcome", "successful reviewed execution"]
+  - case_id: "EVAL-C-008"
+    scenario: "Un PR de dependencia muestra el diff de manifest/lockfile, vulnerabilidades conocidas y licencia; cualquier excepción tiene dueño, mitigación y vencimiento."
+    expected_control: "CTL-004"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["all transitive dependencies are safe", "absence of alert is a security guarantee"]
+    evidence_required: ["dependency review or equivalent", "lockfile diff", "alert/triage record", "exception when applicable"]
+  - case_id: "EVAL-C-009"
+    scenario: "Un detector analiza un fixture sintético, bloquea o alerta según la política y el runbook simulado registra revocación/remediación sin usar un secreto real."
+    expected_control: "CTL-005"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["repository is permanently secret-free", "fixture proves a real credential leaked"]
+    evidence_required: ["synthetic fixture", "detector result", "bypass policy", "simulated remediation record"]
+  - case_id: "EVAL-C-010"
+    scenario: "Cada job recibe permisos mínimos, la operación fuera de scope es denegada y el rol OIDC de despliegue restringe repositorio, rama, environment y audiencia."
+    expected_control: "CTL-007"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["OIDC makes every deployment safe", "a denied action proves all scopes are minimal"]
+    evidence_required: ["workflow permissions", "role trust policy", "negative authorization test", "audit event"]
+  - case_id: "EVAL-C-011"
+    scenario: "Un PR no confiable usa un runner aislado sin secretos ni acceso de producción; los jobs privilegiados solo seleccionan runners autorizados y efímeros."
+    expected_control: "CTL-008"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["hosted runner has zero risk", "runner isolation replaces least privilege"]
+    evidence_required: ["runner inventory", "workflow selection", "network/secret boundary", "negative scheduling test"]
+  - case_id: "EVAL-C-012"
+    scenario: "Una promoción de perfil medio consume un artefacto por digest con SBOM/provenance y un verificador independiente rechaza un subject o commit que no coincide."
+    expected_control: "CTL-009"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["SBOM proves absence of vulnerabilities", "attestation alone grants a SLSA level"]
+    evidence_required: ["artifact digest", "SBOM/provenance", "verification policy", "negative verification result"]
+  - case_id: "EVAL-C-013"
+    scenario: "Un release de riesgo alto registra versión, health, artefacto y un rollback/restauración probado contra un objetivo acordado."
+    expected_control: "CTL-011"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["one rollback drill proves permanent recoverability", "GitHub deployment history is runtime observability"]
+    evidence_required: ["runbook", "deployment/version record", "health evidence", "rollback or restore drill"]
+  - case_id: "EVAL-C-014"
+    scenario: "El agente genera un candidato acotado; verificación determinista, revisión humana independiente y autorización de integración usan identidades separadas y trazables."
+    expected_control: "CTL-012"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["agent is trusted by default", "agent can accept its own risk exception"]
+    evidence_required: ["agent scope", "independent check", "human review", "authorization/audit trail"]
+  - case_id: "EVAL-C-015"
+    scenario: "Una migración compatible o cambio IaC clasificado como alto tiene plan versionado, validación previa, backup/rollback probado y aprobaciones separadas."
+    expected_control: "CTL-013"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["version-controlled IaC cannot drift", "a backup alone proves recovery"]
+    evidence_required: ["risk classification", "plan/diff", "validation result", "backup/rollback drill", "approval"]

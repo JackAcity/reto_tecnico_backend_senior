@@ -10,5 +10,7 @@
 | TB-06 | CI | Proveedor cloud | Token OIDC, claims, despliegue | Escalación de ambiente o credenciales duraderas | Federación con condiciones estrechas y scopes mínimos. |
 | TB-07 | Registro | Runtime | Digest, SBOM, manifest | Artefacto distinto al aprobado | Verificación de digest/attestation antes de ejecutar. |
 | TB-08 | Runtime | Observabilidad/evidencia | Logs, métricas, auditoría | Falta de trazabilidad, borrado o manipulación de evidencia | Retención, acceso restringido e integridad verificable. |
+| TB-09 | Agente de código | MCP / herramienta / fuente de contexto | Prompt, instrucciones, resultados, tokens y datos recuperados | Envenenamiento de contexto, acción no autorizada o exfiltración | Inventario/procedencia, mínimo privilegio, aislamiento y validación independiente. |
+| TB-10 | Administrador / App | Plano de control SCM/CI | Rulesets, environments, Apps, policies y bypasses | Anulación silenciosa de controles | Administración mínima, auditoría de configuración y revisión de cambios de control. |
 
 **ENGINEERING DECISION:** los cambios producidos por agentes cruzan TB-02 como entrada no confiable. Su autoría asistida se registra cuando el proceso lo permita, pero no reduce requisitos de revisión, tests o aprobación.

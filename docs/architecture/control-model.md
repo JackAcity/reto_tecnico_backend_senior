@@ -31,6 +31,7 @@ flowchart LR
 | Evidencia | Registro inmutable o con retención definida que permite repetir la verificación. |
 | Excepción | Aceptación temporal y explícita de riesgo residual; no una omisión silenciosa. |
 | Dueño | Rol responsable de aceptar riesgo, mantener el control o revisar su evidencia. |
+| Coste y fricción | Estimación cualitativa de implementación, operación recurrente, impacto al desarrollador y dependencia de plataforma. |
 
 ## Plantilla normativa de un control
 
@@ -40,15 +41,24 @@ Todo control del catálogo debe conservar esta cadena completa:
 
 Una configuración sin resultado de verificación tiene estado **implementación no demostrada**. Un workflow verde sin identidad de input, versión de control y salida conservada tiene evidencia insuficiente para el perfil alto.
 
+El registro legible por máquina de cada control añade `cost_and_friction` con
+`implementation`, `recurring`, `developer_experience` e
+`infrastructure_platform_dependency`. Un coste alto no elimina un control
+aplicable: obliga a que su dueño compare explícitamente el riesgo residual con la
+alternativa, la excepción temporal o el cambio de alcance.
+
 ## Perfiles de riesgo
 
-| Perfil | Cuándo aplica | Diferenciación razonada |
-| --- | --- | --- |
-| Bajo | Cambio reversible, sin datos sensibles, sin privilegios productivos ni infraestructura. | Busca feedback rápido: revisión proporcional y verificación automatizada básica; no elimina trazabilidad ni análisis de secretos. |
-| Medio | Cambio de funcionalidad, dependencia, contrato, persistencia o servicio con alcance limitado. | Añade revisión de pares, análisis de composición, artefacto identificable y plan de reversión. |
-| Alto | Producción, identidad/autorización, datos sensibles, infraestructura, irreversibilidad, alto blast radius o impacto regulatorio. | Requiere separación de funciones, aprobación de environment, identidad efímera, evidencia de promoción y recuperación probada. |
+La clasificación se realiza con la [rúbrica v0.1](risk-classification.v0.1.md),
+no por intuición del autor ni de un agente. Bajo significa un cambio reversible y
+sin gatillos altos; medio añade superficie persistente o de servicio limitada; alto
+incluye producción, IAM, secretos, datos sensibles, irreversibilidad o blast radius
+amplio. La clasificación inicial no constituye aceptación de riesgo.
 
-**ASSUMPTION:** la clasificación inicial la propone quien cambia el sistema. **ENGINEERING DECISION propuesta:** el dueño de riesgo puede elevar el perfil, nunca rebajarlo sin registrar una excepción. Los umbrales concretos son **TBD-RISK-01**.
+**ENGINEERING DECISION propuesta:** el dueño de riesgo puede elevar el perfil;
+reducirlo requiere una excepción temporal y aprobada. Un agente no puede clasificar
+ni aceptar riesgo como autoridad única. La rúbrica y los roles siguen sujetos a
+aceptación humana en `TBD-RISK-01`.
 
 ## Estados de un control
 

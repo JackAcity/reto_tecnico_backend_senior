@@ -21,3 +21,8 @@ La evaluación antecede a la implementación. Cada caso es un fixture conceptual
 | Exactitud de recomendación | Propone el control adecuado, no una herramienta irrelevante ni una afirmación de cumplimiento. |
 
 Los casos viven en [vulnerable](vulnerable/cases.v0.1.yaml), [compliant](compliant/cases.v0.1.yaml) y [exceptions](exceptions/cases.v0.1.yaml). [expected/schema.md](expected/schema.md) define el contrato.
+
+La [matriz de cobertura](coverage-matrix.v0.1.md) enlaza los 15 controles con al
+menos un caso vulnerable y uno conforme de diseño. Ningún caso se considera
+ejecutado en Gate 1: las métricas de falsos positivos/negativos solo se calculan
+cuando un adaptador y sus fixtures se ejecuten realmente.

@@ -112,3 +112,17 @@ cases:
     expected_findings: ["high-risk release lacks an evaluated promotion and recovery strategy"]
     must_not_claim: ["canary is mandatory for every deployment", "release is safe because it is rolling"]
     evidence_required: ["risk classification", "release strategy decision", "health signals", "rollback evidence"]
+  - case_id: "EVAL-V-017"
+    scenario: "Un agente con acceso de escritura genera el cambio, marca su propia verificación como suficiente y puede aprobar, integrar o solicitar despliegue sin una identidad humana independiente."
+    expected_control: "CTL-012"
+    expected_status: "fail"
+    expected_findings: ["agent crosses incompatible trust-separation duties", "agent authority is not independently constrained"]
+    must_not_claim: ["agent output is trusted because tests passed", "agent is an independent approver"]
+    evidence_required: ["agent permission inventory", "review/approval history", "branch or deployment authorization path", "independent verification result"]
+  - case_id: "EVAL-V-018"
+    scenario: "Una migración destructiva o cambio IaC de alto impacto se promueve sin clasificación de riesgo, plan compatible, backup/rollback ni aprobación del dueño de datos o infraestructura."
+    expected_control: "CTL-013"
+    expected_status: "fail"
+    expected_findings: ["persistent or infrastructure change lacks governed plan and recovery evidence"]
+    must_not_claim: ["migration is safe because it is versioned", "infrastructure change is reversible without proof"]
+    evidence_required: ["risk classification", "migration or IaC plan", "validation output", "backup/rollback evidence", "required approval"]

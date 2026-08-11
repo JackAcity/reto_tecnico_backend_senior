@@ -1,6 +1,9 @@
 # Propuesta de `AGENTS.md` de repositorio
 
-> Este archivo es una propuesta documental; no reemplaza el `AGENTS.md` vigente durante la fase de diseño.
+> Este archivo es una propuesta documental para una sección aditiva de secure
+> delivery. No reemplaza el `AGENTS.md` vigente durante la fase de diseño; la
+> estrategia que preserva sus invariantes está en
+> [AGENTS-integration-strategy.md](AGENTS-integration-strategy.md).
 
 ```md
 # Secure delivery rules

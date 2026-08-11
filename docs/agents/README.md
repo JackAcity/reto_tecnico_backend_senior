@@ -27,3 +27,7 @@
 - MCPs entregan datos/acciones autorizadas; no sustituyen políticas ni validación.
 
 Las tres skills iniciales propuestas se describen en [skills](skills/). Ninguna se instala o habilita hasta aprobar TBD-AGENT-01 y el modelo de evaluación.
+
+La [estrategia de integración de AGENTS](AGENTS-integration-strategy.md) conserva el
+archivo raíz existente como contrato de producto y trata estas reglas como un
+complemento propuesto, nunca como un reemplazo ciego.

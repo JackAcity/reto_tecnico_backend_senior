@@ -5,7 +5,7 @@ La fuente de verdad legible por máquina es [control-catalog.v0.1.yaml](control-
 | ID | Control | Riesgo principal | Perfil | Adaptador GitHub candidato | Verificación requerida |
 | --- | --- | --- | --- | --- | --- |
 | CTL-001 | Integración de mainline protegida | Integración no autorizada | Todos | Rulesets / protección de ramas | Intento de merge/push sin requisitos. |
-| CTL-002 | Build reproducible y CI | Artefacto no repetible | Todos | Workflow de CI versionado | Rebuild del mismo commit y comparación de resultados definidos. |
+| CTL-002 | CI y build canónico/trazable | Integración rota o build sin trazabilidad | Todos los cambios ejecutables | Workflow de CI versionado | Build aplicable enlaza commit, inputs, toolchain y resultados. |
 | CTL-003 | Calidad y testing automatizado | Regresión no detectada | Todos | Checks requeridos | Prueba deliberadamente fallida bloquea la promoción. |
 | CTL-004 | Gobernanza de dependencias | Componente vulnerable o no revisado | Medio/alto | Dependabot, review, SCA | PR con dependencia vulnerable/nueva se detecta. |
 | CTL-005 | Protección de secretos | Credencial expuesta | Todos | Secret scanning / push protection | Fixture secreto dispara detector sin guardar un secreto real. |
@@ -23,3 +23,16 @@ La fuente de verdad legible por máquina es [control-catalog.v0.1.yaml](control-
 ## Lectura de la cadena de control
 
 Ejemplo conceptual de CTL-010: el riesgo es un despliegue de producción sin autorización; el requisito protege un destino de alto impacto; el control exige una decisión de promoción separada; un environment de GitHub es solo un candidato; la verificación intenta un self-approval; la evidencia es configuración, identidad, decisión y deployment log. Si cualquiera falta, el control falla aunque el workflow termine verde.
+
+## Coste y fricción
+
+Cada control contiene en el YAML cuatro estimaciones cualitativas obligatorias:
+`implementation`, `recurring`, `developer_experience` e
+`infrastructure_platform_dependency`. No son un presupuesto ni una aprobación de
+compra: hacen visible el intercambio entre riesgo mitigado, experiencia de
+desarrollo y dependencia de plataforma antes de adoptar el adaptador.
+
+CTL-002 no exige reproducibilidad *bit-for-bit*. Esta capacidad puede añadirse como
+extensión separada cuando el perfil de riesgo, el tipo de artefacto y el coste la
+justifiquen. El control base exige CI y un build canónico que se pueda identificar y
+auditar.

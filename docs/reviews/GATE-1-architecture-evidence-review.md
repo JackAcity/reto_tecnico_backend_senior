@@ -1,64 +1,75 @@
-# Gate 1 — Architecture & Evidence Review
+# Gate 1.1 — Architecture & Evidence Review
 
-- Estado: **ready for human review; not approved for implementation**
+- Estado: **CHANGES REQUIRED resueltos documentalmente; pendiente de revisión humana Gate 1.1**
+- Autorización de implementación: **denegada**
 - Fecha: 2026-08-11
-- Baseline revisado: `7fbfa0a` más mejoras documentales de Gate 1 aún no publicadas
-- Alcance: modelo de conocimiento, controles, amenazas, evidencia, evals y gobernanza de agentes
+- Baseline revisado: `824f765` más la remediación documental no implementada de
+  Gate 1.1
+- Alcance: modelo de conocimiento, controles, amenazas, evidencia, evals,
+  gobernanza de agentes y precondiciones del adaptador GitHub
 
-## Resultado de la revisión estructural
+## Decisión vigente
+
+La dirección arquitectónica está aceptada: la cadena
+`fuente → riesgo → requisito → control → adaptador → verificación → evidencia`
+permanece independiente de GitHub. El Gate no se cierra todavía porque las decisiones
+humanas de riesgo, mainline, plan/permisos de GitHub, identidad y operación siguen
+abiertas. No se han creado ni modificado workflows, rulesets, environments, secretos,
+deployments, identidad cloud ni configuración administrativa.
+
+## Trazabilidad de remediación independiente
+
+| ID | Hallazgo | Remediación y evidencia | Estado |
+| --- | --- | --- | --- |
+| G1-R01 | CTL-002 confundía CI con reproducibilidad bit a bit y citaba DORA CD. | CTL-002 ahora se llama **CI y build canónico/trazable**, cita `SRC-DORA-CI` y modela reproducibilidad bit a bit como extensión guiada por riesgo. | Resuelto documentalmente. |
+| G1-R02 | El mapa GitHub omitía seis controles. | [Capability map](../github/platform-capability-map.md) contiene CTL-001 a CTL-015 y declara `partial`, `external` o `no-native-capability`. | Resuelto documentalmente. |
+| G1-R03 | CTL-012/013 no tenían caminos directos y faltaba matriz. | La [matriz](../../evals/coverage-matrix.v0.1.md) enlaza los 15 controles con `fail` y `pass`; se añadieron EVAL-V-017/018 y EVAL-C-006..015. | Resuelto como cobertura de diseño; no ejecutado. |
+| G1-R04 | El esquema no visibilizaba coste/fricción. | Los 15 controles YAML incluyen `cost_and_friction` con cuatro dimensiones cualitativas; el [modelo](../architecture/control-model.md) lo hace obligatorio. | Resuelto documentalmente. |
+| G1-R05 | La propuesta podía reemplazar el AGENTS raíz y perder invariantes. | [Estrategia de integración](../agents/AGENTS-integration-strategy.md) conserva el `AGENTS.md` actual y trata delivery como sección aditiva propuesta. | Resuelto documentalmente; no activado. |
+| G1-R06 | LOW/MEDIUM/HIGH no tenía función ni autoridad explícita. | [Rúbrica](../architecture/risk-classification.v0.1.md) define factores, puntaje, gatillos, roles y evidencia. `TBD-RISK-01` requiere aceptación/nombres humanos. | Resuelto como propuesta operable; decisión humana pendiente. |
+| G1-R07 | `develop` era default sin decisión de mainline. | [ADR-0002](../adr/ADR-0002-trusted-mainline-strategy.md) evalúa A/B/C y recomienda `main` como mainline; no cambia ramas. | Decisión humana pendiente. |
+| G1-R08 | Faltaban plan, visibilidad, permisos y dependencias externas del adaptador. | El mapa añade `plan_prerequisite`, `visibility_prerequisite`, `admin_permission` y `external_dependency` por control. | Resuelto documentalmente; se comprobará por repositorio objetivo. |
+| G1-R09 | Dependabot, dependency review, secret scanning y push protection no tenían fuente primaria propia. | [Source register](../sources/source-register.md) incorpora cuatro fuentes GitHub oficiales y el catálogo las usa en CTL-004/005. | Resuelto documentalmente. |
+| G1-R10 | Faltaban amenazas de MCP/contexto y plano administrativo. | Threat model añade TM-19/TM-20 y trust boundaries TB-09/TB-10. | Resuelto documentalmente. |
+| G1-R11 | Reutilización pública no tenía licencia explícita. | `TBD-LICENSE-01` deja la decisión visible; no bloquea el Gate técnico. | Pendiente del dueño del repositorio. |
+
+## Resultado verificable de Gate 1.1
 
 | Criterio | Resultado | Evidencia |
 | --- | --- | --- |
-| Skeleton requerido | Pass | 36 rutas requeridas presentes en `docs/` y `evals/`. |
-| Registro de fuentes | Pass con revisión humana pendiente | [source register](../sources/source-register.md) diferencia final, draft, investigación y capacidad. |
-| Catálogo de controles | Pass | 15 controles; cada uno contiene los 17 campos obligatorios. |
-| Trazabilidad de fuentes | Pass | Cada `source_basis` del catálogo referencia un `source_id` registrado. |
-| Modelo de amenazas | Pass con riesgo residual abierto | Activos, actores, límites, puntos de entrada y 18 rutas de ataque. |
-| Modelo de evidencia | Pass | Sobre de evidencia y cadena de trazabilidad definidos. |
-| Eval plan | Pass | 23 casos con contrato completo: vulnerable, compliant y exception. |
-| AGENTS y skills | Pass como propuestas | [AGENTS propuesto](../agents/AGENTS.md.proposed.md) y tres responsabilidades separadas. |
-| Implementación CI/CD | No iniciada deliberadamente | No hay workflows, rulesets, environments, secrets ni despliegues creados en este gate. |
+| Modelo conceptual independiente de plataforma | Pass | [ADR-0001](../adr/ADR-0001-platform-neutral-control-model.md), [control model](../architecture/control-model.md). |
+| Catálogo de controles | Pass de diseño | 15 controles, incluyendo coste/fricción cualitativo; [YAML](../architecture/control-catalog.v0.1.yaml). |
+| CTL-002 semánticamente acotado | Pass de diseño | CI/trazabilidad separadas de reproducibilidad estricta. |
+| Fuentes de plataforma | Pass de registro | Fuentes GitHub primarias para dependencias y secretos; vigencia se revalida antes de adaptar. |
+| Mapa GitHub | Pass de cobertura documental | 15/15 controles con prerrequisitos y límites explícitos. |
+| Modelo de amenazas | Pass de diseño | 20 rutas, incluyendo agentes, MCP/contexto y plano administrativo. |
+| Evaluaciones | Pass de cobertura de diseño | 35 casos: 18 vulnerable, 15 compliant, 2 exception; no ejecutados. |
+| AGENTS y skills | Pass como propuestas | El `AGENTS.md` del producto se preserva; no hay activación de delivery. |
+| Implementación CI/CD | **No iniciada deliberadamente** | No hay cambios de plataforma dentro de este gate. |
 
-## Hallazgos corregidos durante Gate 1
+## Decisiones que todavía impiden la autorización
 
-1. **G1-01 — Evidencia DORA específica:** se añadieron fuentes separadas para CI, TBD y pequeños lotes. DORA se conserva como investigación; sus tiempos/cadencias no se convirtieron en gate universal.
-2. **G1-02 — Progressive delivery:** CTL-014 exige decidir la estrategia por riesgo y permite `not-applicable` justificado. No presupone canary, blue-green ni soporte de runtime inexistente.
-3. **G1-03 — Reusable workflows:** CTL-015 controla contratos de inputs/secrets, referencias inmutables y `secrets: inherit`; incluye casos vulnerables y conformes.
-4. **G1-04 — Modelo de amenazas:** se hicieron explícitos los puntos de entrada, incluido prompt, salida de herramienta y diff de agente.
+| Decisión | Estado requerido |
+| --- | --- |
+| `TBD-RISK-01` | Aceptar rúbrica y nombrar autoridad de riesgo. |
+| `TBD-SCM-01` | Aceptar ADR-0002 y decidir default/mainline antes de modificar ramas. |
+| `TBD-GH-01` | Confirmar repositorio, plan, visibilidad, administradores y capacidades efectivas. |
+| `TBD-ID-01` | Elegir runtime/proveedor, OIDC y roles. |
+| `TBD-EVID-01` / `TBD-OPS-01` | Aprobar retención, acceso, SLO, observabilidad y recuperación. |
+| `TBD-AGENT-01` | Aprobar uso permitido de agentes, datos y revisores. |
+| `TBD-EXC-01` | Definir aceptación, duración y escalamiento de excepciones. |
 
-## Conflictos y límites que deben permanecer visibles
+## Recomendación para la revisión humana Gate 1.1
 
-- SSDF 1.1 es final; SSDF 1.2 es un borrador inicial. No se admite declarar v1.2 como baseline normativa.
-- DORA es evidencia de capacidad, no certificación ni requisito de cumplimiento. Su descripción de TBD/CI crea una decisión de adopción, no un mandato ciego.
-- Una attestation/SBOM/provenance demuestra procedencia o composición conforme a política; no prueba ausencia de vulnerabilidades.
-- GitHub ofrece mecanismos técnicos; no sustituye segregación organizacional, decisiones de riesgo ni controles del proveedor cloud.
+1. Verificar la traza G1-R01..G1-R11 contra los documentos enlazados.
+2. Aceptar, rechazar o ajustar los candidatos de `TBD-RISK-01` y `ADR-0002`.
+3. Confirmar los prerrequisitos reales de GitHub sin trasladar supuestos de este
+   repositorio público a uno privado de cliente.
+4. Si las decisiones bloqueantes reciben dueño y aprobación explícita, autorizar un
+   **primer vertical mínimo**, no un paquete masivo de CI/CD: CTL-001, CTL-003,
+   CTL-005, CTL-006, CTL-007 y CTL-012, cada uno con camino adversarial ejecutado y
+   evidencia conservada.
 
-## Decisiones requeridas para aceptar Gate 1
-
-| Decisión | Opciones que deben evaluarse | Consecuencia |
-| --- | --- | --- |
-| `TBD-SCM-01` | Trunk/mainline, `develop` como integración, o ramas de release. | Define qué significa CI y la política de integración. |
-| `TBD-RISK-01` | Criterios y autoridad de perfiles bajo/medio/alto. | Define qué controles se activan y quién los acepta. |
-| `TBD-GH-01` | Repositorio, plan GitHub, administradores y gobernanza real. | Determina capacidades configurables y pruebas de API/configuración. |
-| `TBD-ID-01` | Runtime/proveedor, OIDC y roles por environment. | Bloquea deployment y secretos cloud. |
-| `TBD-EVID-01` / `TBD-OPS-01` | Retención, auditoría, métricas, SLOs y rollback. | Bloquea la evidencia operativa y CTL-011/014. |
-| `TBD-AGENT-01` | Datos permitidos, trazabilidad y aprobaciones de agentes. | Bloquea habilitar agentes con privilegios de entrega. |
-| `TBD-REUSABLE-01` | Alcance/política de reusable workflows. | Bloquea centralizar workflows. |
-
-## Recomendación de decisión
-
-**Recomendar: aceptar Gate 1 solo como diseño v0.1**, tras responder los TBD anteriores. Aún no recomendar implementar CI/CD. Una vez aceptado, el siguiente mandato debe pedir un mínimo vertical de cinco o seis controles, cada uno con evaluación adversarial y evidencia, no una colección masiva de workflows.
-
-## Paquete para revisor externo
-
-Entregar estos enlaces, junto con esta pregunta:
-
-1. [Source register](../sources/source-register.md)
-2. [Control catalog](../architecture/control-catalog.md) y [YAML](../architecture/control-catalog.v0.1.yaml)
-3. [GitHub capability map](../github/platform-capability-map.md)
-4. [Threat model](../architecture/threat-model.md)
-5. [Eval plan](../../evals/README.md)
-6. [AGENTS proposal](../agents/AGENTS.md.proposed.md)
-7. [ADR-0001](../adr/ADR-0001-platform-neutral-control-model.md)
-
-> ¿El modelo separa correctamente fuente, requisito, control, adaptador, verificación y evidencia? ¿Qué decisión humana falta antes de autorizar un mínimo vertical de controles GitHub? No evaluar YAML de CI ni permitir implementación en esta revisión.
+Hasta esa autorización, este repositorio solo permite investigación, diseño,
+evaluaciones conceptuales y documentación. No permite implementación de controles de
+plataforma.

@@ -16,12 +16,15 @@ El modelo cubre la cadena desde intención de cambio hasta runtime. Usa activos,
 | Runners y caches | Plataforma | Ejecución con contaminación persistente o acceso lateral. |
 | Evidencia, logs y auditoría | Operación/seguridad | Incapacidad de investigar o de demostrar controles. |
 | Datos de producción y secretos de runtime | Dueño de datos | Violación de confidencialidad, integridad o disponibilidad. |
+| MCP, servidores de herramientas y fuentes de contexto/retrieval | Plataforma de agentes | Instrucciones, datos o acciones envenenadas que alteran el candidato o exfiltran información. |
+| Plano administrativo de SCM/CI | Dueño de repositorio/plataforma | Cambio de rulesets, Apps, environments o políticas que anula controles sin cambiar código. |
 
 ## Actores
 
 - Desarrollador, revisor, responsable de release y administrador de plataforma.
 - Agente de programación, que genera candidatos y usa herramientas bajo un permiso concreto.
 - GitHub Actions/runner, GitHub App y proveedor cloud como identidades no humanas separadas.
+- Operador de MCP, servidor de herramientas, proveedor de contexto/retrieval y administrador de SCM/CI como actores separados del agente de código.
 - Colaborador malicioso, atacante externo, dependencia/acción comprometida y PR no confiable.
 - Auditor/verificador, que debe poder observar sin depender de la identidad que produjo el cambio.
 
@@ -54,10 +57,12 @@ El modelo cubre la cadena desde intención de cambio hasta runtime. Usa activos,
 | TM-16 | Falta de recuperación | Migración o release sin rollback probado. | Indisponibilidad prolongada o corrupción. | Estrategia de rollback, backup/restauración y pruebas. | Cambios irreversibles. |
 | TM-17 | Evidencia insuficiente | Logs se vencen o no enlazan commit/artifact/approver. | Auditoría imposible. | Modelo de evidencia, retención y exportación. | Acceso indebido o pérdida del proveedor. |
 | TM-18 | Agente autoautoriza | Mismo agente genera, verifica, aprueba, mergea y despliega. | Error o abuso sin independencia. | Segregación de deberes, verificador determinista y aprobación humana. | Automatización coludida o políticas mal configuradas. |
+| TM-19 | MCP, herramienta o contexto envenenado | Un servidor MCP, output de herramienta o fuente de retrieval comprometida entrega instrucciones/datos maliciosos al agente. | Cambio inseguro, exfiltración o uso indebido de credenciales. | Inventario y procedencia de herramientas, permisos mínimos, aislamiento, validación independiente y revisión humana. | Herramienta confiada comprometida o validación semántica insuficiente. |
+| TM-20 | Compromiso del plano administrativo | Un administrador, App o integración altera rulesets, environments, políticas, Apps o configuración organizacional. | Bypass silencioso de gates, despliegue o acceso privilegiado. | Administración mínima, auditoría/export de configuración, revisión de cambios de control y alertas de bypass. | Abuso de administrador legítimo o compromiso del proveedor. |
 
 ## Priorización inicial
 
-**HYPOTHESIS:** TM-03, TM-05, TM-07, TM-09, TM-10, TM-12, TM-14 y TM-18 son de prioridad alta para cualquier habilitación de CI/CD. La probabilidad e impacto cuantificados requieren activos, proveedor, exposición pública y tolerancia de riesgo confirmados; no se inventan en v0.1.
+**HYPOTHESIS:** TM-03, TM-05, TM-07, TM-09, TM-10, TM-12, TM-14, TM-18, TM-19 y TM-20 son de prioridad alta antes de conceder autoridad material a CI/CD o agentes. La probabilidad e impacto cuantificados requieren activos, proveedor, exposición pública y tolerancia de riesgo confirmados; no se inventan en v0.1.
 
 ## Verificación del modelo
 

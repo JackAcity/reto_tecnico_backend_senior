@@ -1,0 +1,16 @@
+suite: "exceptions-v0.1"
+cases:
+  - case_id: "EVAL-E-001"
+    scenario: "Una dependencia vulnerable se conserva temporalmente por incompatibilidad, con CVE, mitigación, dueño y vencimiento vigentes."
+    expected_control: "CTL-004"
+    expected_status: "exception"
+    expected_findings: ["accepted residual risk must remain visible and time-bound"]
+    must_not_claim: ["dependency is safe", "finding is resolved"]
+    evidence_required: ["exception record", "CVE context", "compensating control", "expiry and approval"]
+  - case_id: "EVAL-E-002"
+    scenario: "Cambio de emergencia usa bypass autorizado, registra identidad, digest, impacto y revisión posterior dentro del plazo aprobado."
+    expected_control: "CTL-010"
+    expected_status: "exception"
+    expected_findings: ["emergency path is an exception, not normal compliance"]
+    must_not_claim: ["normal approval controls passed", "bypass is invisible"]
+    evidence_required: ["emergency authorization", "deployment record", "post-incident review", "exception expiry"]

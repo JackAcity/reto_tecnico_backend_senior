@@ -1,0 +1,23 @@
+suite: "compliant-v0.1"
+cases:
+  - case_id: "EVAL-C-001"
+    scenario: "Rama confiable exige PR, check efectivo y revisión; el intento de merge con test fallido es rechazado."
+    expected_control: "CTL-001"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["compliance with all NIST SSDF practices", "security of every code change"]
+    evidence_required: ["ruleset snapshot", "failed-check merge attempt", "approved successful PR"]
+  - case_id: "EVAL-C-002"
+    scenario: "Job no confiable tiene contents:read, no secretos; acciones aprobadas usan identidad inmutable y un job separado recibe OIDC mínimo."
+    expected_control: "CTL-006"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["the runner or third-party action can never be compromised"]
+    evidence_required: ["workflow permissions", "action inventory/pins", "negative access test", "OIDC trust policy"]
+  - case_id: "EVAL-C-003"
+    scenario: "Deployment de alto riesgo consume digest, verifica attestation contra política, requiere aprobador distinto y conserva resultado de rollback drill."
+    expected_control: "CTL-010"
+    expected_status: "pass"
+    expected_findings: []
+    must_not_claim: ["artifact has no vulnerabilities", "SLSA level is achieved without formal assessment"]
+    evidence_required: ["digest", "verification output", "environment approval", "deployment/rollback events"]

@@ -1,0 +1,100 @@
+suite: "vulnerable-v0.1"
+cases:
+  - case_id: "EVAL-V-001"
+    scenario: "La rama de integración permite push directo y merge sin PR ni checks."
+    expected_control: "CTL-001"
+    expected_status: "fail"
+    expected_findings: ["trusted mainline lacks enforced integration governance"]
+    must_not_claim: ["ruleset is configured", "change was independently reviewed"]
+    evidence_required: ["branch/ruleset configuration snapshot", "attempted direct push or merge result"]
+  - case_id: "EVAL-V-002"
+    scenario: "No existe definición de CI para cambios de código ejecutable."
+    expected_control: "CTL-002"
+    expected_status: "fail"
+    expected_findings: ["missing versioned build and integration verification"]
+    must_not_claim: ["repository is continuously integrated", "build is reproducible"]
+    evidence_required: ["repository workflow inventory", "build definition search result"]
+  - case_id: "EVAL-V-003"
+    scenario: "Una prueba deliberadamente fallida no impide integrar el cambio."
+    expected_control: "CTL-003"
+    expected_status: "fail"
+    expected_findings: ["failing automated test is not an effective gate"]
+    must_not_claim: ["tests protect the trusted branch"]
+    evidence_required: ["failed test execution", "merge/check result"]
+  - case_id: "EVAL-V-004"
+    scenario: "Un job de lectura declara GITHUB_TOKEN con permisos de escritura globales."
+    expected_control: "CTL-007"
+    expected_status: "fail"
+    expected_findings: ["non-human identity exceeds least privilege"]
+    must_not_claim: ["permissions are least privilege"]
+    evidence_required: ["workflow permissions declaration", "job purpose and authorization test"]
+  - case_id: "EVAL-V-005"
+    scenario: "Un workflow usa una acción externa no inventariada ni evaluada con token privilegiado."
+    expected_control: "CTL-006"
+    expected_status: "fail"
+    expected_findings: ["untrusted third-party action in privileged execution path"]
+    must_not_claim: ["third-party action is trusted because it is popular"]
+    evidence_required: ["workflow reference", "action inventory/approval record", "permissions context"]
+  - case_id: "EVAL-V-006"
+    scenario: "Una acción se referencia por tag mutable, por ejemplo owner/action@v1."
+    expected_control: "CTL-006"
+    expected_status: "fail"
+    expected_findings: ["mutable action reference"]
+    must_not_claim: ["action version is immutable", "pinning alone proves supply-chain safety"]
+    evidence_required: ["workflow reference", "policy requiring immutable identity"]
+  - case_id: "EVAL-V-007"
+    scenario: "Un archivo contiene CREDENTIAL_EXAMPLE=not-a-real-secret-but-hardcoded."
+    expected_control: "CTL-005"
+    expected_status: "fail"
+    expected_findings: ["hardcoded credential pattern or missing detector response"]
+    must_not_claim: ["a real credential was exposed", "repository is secret-free without scan evidence"]
+    evidence_required: ["synthetic fixture location", "detector result and response record"]
+  - case_id: "EVAL-V-008"
+    scenario: "Un cambio introduce una dependencia vulnerable y no existe revisión/gestión de dependencia."
+    expected_control: "CTL-004"
+    expected_status: "fail"
+    expected_findings: ["missing dependency governance or vulnerability handling"]
+    must_not_claim: ["all dependencies are safe", "a package is malicious without evidence"]
+    evidence_required: ["dependency diff/lockfile", "scanner or review result", "exception search"]
+  - case_id: "EVAL-V-009"
+    scenario: "Un artefacto de producción se promueve por tag mutable sin digest ni provenance verificable."
+    expected_control: "CTL-009"
+    expected_status: "fail"
+    expected_findings: ["artifact identity and provenance are insufficient"]
+    must_not_claim: ["artifact is SLSA compliant", "artifact is secure"]
+    evidence_required: ["deployment reference", "registry metadata", "attestation verification result"]
+  - case_id: "EVAL-V-010"
+    scenario: "El iniciador puede aprobar su propio deployment de producción desde una ref no restringida."
+    expected_control: "CTL-010"
+    expected_status: "fail"
+    expected_findings: ["unauthorized production deployment path", "self-approval bypass"]
+    must_not_claim: ["segregation of duties is enforced"]
+    evidence_required: ["environment configuration", "approval/deployment attempt", "audit event"]
+  - case_id: "EVAL-V-011"
+    scenario: "pull_request_target ejecuta checkout o script de código de fork con secretos disponibles."
+    expected_control: "CTL-006"
+    expected_status: "fail"
+    expected_findings: ["untrusted pull request code executes in privileged context"]
+    must_not_claim: ["event is safe because it is an official GitHub trigger"]
+    evidence_required: ["workflow event and checkout steps", "token/secret exposure context"]
+  - case_id: "EVAL-V-012"
+    scenario: "Los archivos de workflow pueden cambiarse sin la protección de la rama o revisión requerida."
+    expected_control: "CTL-001"
+    expected_status: "fail"
+    expected_findings: ["workflow definition is not protected as privileged code"]
+    must_not_claim: ["workflow security is enforced"]
+    evidence_required: ["ruleset/CODEOWNERS configuration", "PR or direct-change result"]
+  - case_id: "EVAL-V-013"
+    scenario: "Un PR externo se ejecuta en un runner self-hosted con acceso a red interna o secretos."
+    expected_control: "CTL-008"
+    expected_status: "fail"
+    expected_findings: ["inappropriate self-hosted runner use for untrusted input"]
+    must_not_claim: ["environment isolation protects this runner"]
+    evidence_required: ["runner labels/configuration", "workflow selection", "network/secret exposure evidence"]
+  - case_id: "EVAL-V-014"
+    scenario: "Un cambio de producción no tiene digest anterior, runbook ni recuperación probada."
+    expected_control: "CTL-011"
+    expected_status: "fail"
+    expected_findings: ["missing rollback and recovery strategy"]
+    must_not_claim: ["deployment is recoverable", "availability objective is met"]
+    evidence_required: ["release record", "runbook", "rollback drill or explicit absence"]

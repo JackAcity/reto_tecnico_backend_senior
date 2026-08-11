@@ -7,30 +7,17 @@ using Yarp.ReverseProxy.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Gateway");
 
-// ---------------------------------------------------------------------------
-// §C12 — el tamaño máximo tiene TRES techos distintos (Kestrel, form options y
-// YARP). Si no se configuran los tres, el usuario recibe un 413 crudo del
-// gateway que parece un bug. Se define una sola vez, aquí.
-// El transporte permite 1 MB más que el límite de negocio: así Control alcanza
-// a responder un error claro en vez de que la conexión se corte antes.
-// ---------------------------------------------------------------------------
+// El transporte deja margen para que Control devuelva el error de negocio, no un 413 del gateway.
 var tamanoMaximoMb = builder.Configuration.GetValue("Carga:TamanoMaximoMb", 25);
 var limiteTransporte = (tamanoMaximoMb + 1L) * 1024 * 1024;
 
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = limiteTransporte);
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = limiteTransporte);
 
-// Validación del JWT en el borde, con la misma configuración que usa Control
-// (BuildingBlocks.Autenticacion). Los microservicios de atrás no publican
-// puertos (ver docker-compose.yml), así que esta es la única entrada pública.
+// El gateway es el único borde público y valida el JWT antes de enrutar.
 builder.Services.AddAutenticacionJwt(builder.Configuration);
 
-// ---------------------------------------------------------------------------
-// CORS — solo acá: Gateway es la única puerta pública. El cliente React (Vite
-// dev, distinto puerto) está sujeto a same-origin policy y necesita el header
-// explícito; Postman no (no corre en un navegador). Nunca AllowAnyOrigin, y sin
-// AllowCredentials porque el JWT viaja en Authorization, no en cookies.
-// ---------------------------------------------------------------------------
+// Sólo el borde público habilita los orígenes explícitos del cliente web.
 var origenesPermitidos = (builder.Configuration["Cors:OrigenesPermitidos"] ?? "http://localhost:5173")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -39,10 +26,7 @@ builder.Services.AddCors(o => o.AddPolicy("cliente-web", p => p
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
-// ---------------------------------------------------------------------------
-// Rate limiting (obligatorio). Particionado por `sub`: un usuario no consume la
-// cuota de otro. Sin token, la partición cae al IP de origen.
-// ---------------------------------------------------------------------------
+// La cuota se reparte por usuario autenticado o por IP para solicitudes anónimas.
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -54,7 +38,7 @@ builder.Services.AddRateLimiter(o =>
             Window = TimeSpan.FromMinutes(1)
         }));
 
-    // La carga es cara (archivo + cola + procesamiento): cuota propia y más baja.
+    // Las cargas consumen archivo, cola y procesamiento; necesitan una cuota menor.
     o.AddPolicy(Politicas.LimiteCarga, http =>
         RateLimitPartition.GetFixedWindowLimiter(Politicas.Particion(http), _ => new FixedWindowRateLimiterOptions
         {
@@ -62,8 +46,7 @@ builder.Services.AddRateLimiter(o =>
             Window = TimeSpan.FromMinutes(1)
         }));
 
-    // El login es anónimo por definición: se particiona por IP para que no sirva
-    // de oráculo de fuerza bruta.
+    // El login es anónimo; la cuota por IP limita intentos de fuerza bruta.
     o.AddPolicy(Politicas.LimiteLogin, http =>
         RateLimitPartition.GetFixedWindowLimiter(
             http.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
@@ -81,9 +64,7 @@ builder.Services.AddRateLimiter(o =>
     };
 });
 
-// Rutas en código y no en appsettings: el límite de tamaño por ruta tiene que
-// salir del mismo cálculo que Kestrel y form options (§C12). Duplicar el número
-// en un JSON es la forma habitual de que los tres techos dejen de coincidir.
+// Las rutas reutilizan el mismo límite calculado para evitar techos inconsistentes.
 builder.Services
     .AddReverseProxy()
     .LoadFromMemory(Politicas.Rutas(limiteTransporte), Politicas.Clusters(builder.Configuration));
@@ -99,30 +80,24 @@ app.MapReverseProxy();
 
 app.Run();
 
-/// <summary>Configuración del borde en un solo lugar: políticas, rutas y destinos.</summary>
+/// <summary>Políticas, rutas y destinos del borde público.</summary>
 internal static class Politicas
 {
     public const string LimitePorUsuario = "porUsuario";
     public const string LimiteCarga = "carga";
     public const string LimiteLogin = "login";
 
-    /// <summary>Clave de partición del rate limiter: el usuario del token, o el IP si es anónimo.</summary>
+    /// <summary>Usa el usuario autenticado o la IP como clave de cuota.</summary>
     public static string Particion(HttpContext http) =>
         http.User.FindFirst("sub")?.Value
         ?? http.Connection.RemoteIpAddress?.ToString()
         ?? "anonimo";
 
-    // Kestrel.MaxRequestBodySize es un techo por PROCESO (limiteTransporte, ~26 MB,
-    // dimensionado para la subida) — sin este override, /auth/login hereda ese
-    // mismo techo aunque un login/refresh nunca pese más de un par de KB. YARP
-    // permite un límite MENOR por ruta, que es justo lo que hace falta acá: no
-    // gastar tiempo de Kestrel leyendo hasta 26 MB de un POST que iba a fallar la
-    // validación de todos modos.
+    // Login y refresh no deben heredar el límite de las cargas de archivos.
     private const long LimiteCuerpoAuth = 4 * 1024;
 
     public static IReadOnlyList<RouteConfig> Rutas(long limiteTransporte) =>
     [
-        // Anónimas por necesidad: sin login no hay token.
         new RouteConfig
         {
             RouteId = "auth-login",
@@ -139,12 +114,7 @@ internal static class Politicas
             RateLimiterPolicy = LimiteLogin,
             MaxRequestBodySize = LimiteCuerpoAuth
         },
-        // La subida: exige el permiso de carga y trae su propio techo de tamaño.
-        // Separada de la consulta (abajo) — antes una sola ruta exigía PoliticaCargaMasiva
-        // para TODO /cargas/{**resto}, así que el rol "consulta" (sin ese permiso, pero
-        // sí autenticado) recibía 403 al pedir su propio historial, aunque Control ya
-        // exige solo PoliticaAutenticado en sus GET (Control.Api/Program.cs). Encontrado
-        // al probar el cliente React con el usuario consulta@reto.local.
+        // Subir y consultar requieren permisos y cuotas diferentes.
         new RouteConfig
         {
             RouteId = "cargas-subida",
@@ -154,9 +124,7 @@ internal static class Politicas
             RateLimiterPolicy = LimiteCarga,
             MaxRequestBodySize = limiteTransporte
         },
-        // Historial, detalle y descarga: cualquier usuario autenticado, igual que Control.
-        // Con LimitePorUsuario (60/min) y no LimiteCarga (10/min) — el polling del
-        // cliente web (cada 3 s) supera las 10/min de la cuota de subida.
+        // El historial usa la cuota de lectura para no penalizar el polling del cliente.
         new RouteConfig
         {
             RouteId = "cargas-consulta",
@@ -165,7 +133,6 @@ internal static class Politicas
             AuthorizationPolicy = Autenticacion.PoliticaAutenticado,
             RateLimiterPolicy = LimitePorUsuario
         },
-        // Diagnóstico de los servicios internos por la única puerta pública.
         new RouteConfig
         {
             RouteId = "cargamasiva",

@@ -57,12 +57,8 @@ public static class Topologia
     }
 
     /// <summary>
-    /// Un nack sin requeue manda el mensaje al exchange de reintento, donde espera
-    /// su TTL sin consumidor y vuelve solo a la cola principal — el retardo entre
-    /// reintentos sin plugins ni temporizadores propios. Tras N intentos (el
-    /// consumidor cuenta con el header x-death que RabbitMQ ya agrega en cada
-    /// vuelta) se publica a mano en la cola de muertos correspondiente y el
-    /// mensaje deja de girar.
+    /// Declara la cola principal, la cola con TTL para reintentos y la cola de muertos.
+    /// El consumidor decide cuándo detener el ciclo según <c>x-death</c>.
     /// </summary>
     private static async Task DeclararColaConReintentoAsync(
         IChannel canal, string cola, string routingKey, string routingKeyMuerto,
@@ -89,13 +85,7 @@ public static class Topologia
         await canal.QueueBindAsync(colaMuertos, Exchange, routingKeyMuerto, cancellationToken: ct);
     }
 
-    /// <summary>
-    /// RabbitMQ agrega el header "x-death" (arreglo de tablas AMQP) cada vez que un
-    /// mensaje muere hacia un dead-letter-exchange. Se busca la entrada de LA COLA
-    /// dada y se lee su "count" — la forma estándar de contar reintentos sin
-    /// mantener estado propio ni un plugin adicional. Compartido por los dos
-    /// consumidores (carga y notificaciones).
-    /// </summary>
+    /// <summary>Lee los reintentos de la cola indicada desde el encabezado <c>x-death</c>.</summary>
     public static int ContarIntentosPrevios(IDictionary<string, object?>? headers, string cola)
     {
         if (headers is null || !headers.TryGetValue("x-death", out var valor) || valor is not IList<object?> muertes)

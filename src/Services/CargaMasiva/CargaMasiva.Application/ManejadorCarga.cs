@@ -35,18 +35,12 @@ public sealed class ManejadorCarga(
     IPublicadorNotificacion publicador,
     ILogger<ManejadorCarga> log)
 {
-    /// <summary>
-    /// Retorna el estado terminal alcanzado (design.md §D4 de
-    /// arquitectura-hexagonal-transversal) — comunica el resultado sin que el
-    /// llamador (o un test) tenga que releer la base para saber qué pasó.
-    /// </summary>
+    /// <summary>Procesa el mensaje y devuelve el estado alcanzado por la carga.</summary>
     public async Task<Resultado<EstadoCarga>> ProcesarAsync(MensajeCarga mensaje, string correlationId, CancellationToken ct)
     {
         var carga = await repositorio.ObtenerAsync(mensaje.IdCarga, ct);
 
-        // §C8 — reentrega de un mensaje ya procesado (o de una carga ya resuelta
-        // por otro motivo). Reprocesar violaría la máquina de estados y podría
-        // duplicar trabajo; se ignora en silencio, no es un error.
+        // Una reentrega terminal no debe reabrir ni duplicar una carga resuelta.
         if (carga.Estado is not (EstadoCarga.Pendiente or EstadoCarga.EnProceso))
         {
             log.LogWarning("Carga {IdCarga} reentregada en estado {Estado}; se ignora.", carga.Id, carga.Estado);
@@ -61,24 +55,15 @@ public sealed class ManejadorCarga(
 
         await using var contenido = await almacen.DescargarAsync(mensaje.RutaArchivo, ct);
 
-        // ILectorExcel avanza hacia delante, pero este caso de uso materializa todas
-        // las filas porque ProcesadorLote recibe el lote completo para resolver
-        // períodos, duplicados y rechazos de forma consistente. Por tanto el
-        // pipeline actual es O(n) en memoria: "lector streaming" no significa
-        // "procesamiento streaming". La prueba real de 2M filas está documentada
-        // en docs/pruebas-de-escala.md; convertirlo a ventanas requeriría redefinir
-        // la coordinación de períodos y la auditoría, no reemplazar solo este ToList.
+        // Las reglas cruzadas requieren el lote completo; este punto hace explícito
+        // el coste O(n) de memoria. Convertirlo a ventanas exige rediseñar reglas y auditoría.
         var filas = lector.Leer(contenido).ToList();
 
         var resultadoLote = await procesadorLote.ProcesarAsync(carga.Id, filas, ct);
         var insertadas = await insertador.InsertarAsync(carga.Id, resultadoLote.Aceptadas, ct);
 
-        // Auditoría (§3.3c): rechazos de negocio + los ajustes de "valor por
-        // defecto aplicado" (§2.4b) — no son un rechazo, pero el usuario debe
-        // poder verlos igual que cualquier otro motivo. Se persiste una fila por
-        // hallazgo: una carga de 2M rechazada genera 2M auditorías. Eso preserva
-        // trazabilidad, pero hace que pedir el total exacto de errores sea O(n);
-        // ConsultaCargasEf limita el payload, no el CountAsync que calcula ese total.
+        // Se registra cada rechazo y observación para conservar trazabilidad. Por eso
+        // pedir un total exacto de errores cuesta O(n), aunque el detalle se pagine.
         repositorio.AgregarErrores(resultadoLote.Rechazadas.Concat(resultadoLote.Observaciones).Select(r =>
             new DetalleCargaError
             {
@@ -92,9 +77,7 @@ public sealed class ManejadorCarga(
                 FechaRegistro = DateTimeOffset.UtcNow
             }));
 
-        // sp_resolver_periodo inserta carga_periodo con filas_insertadas=0 (no
-        // sabe cuántas van a entrar todavía); acá ya se sabe, así que se completa
-        // — el detalle por periodo (§5️⃣) lo expone tal cual.
+        // El procedimiento reserva el período; el conteo sólo se conoce tras insertar.
         var porPeriodo = resultadoLote.Aceptadas.GroupBy(f => f.Periodo).ToDictionary(g => g.Key, g => g.Count());
         if (porPeriodo.Count > 0)
         {
@@ -105,35 +88,27 @@ public sealed class ManejadorCarga(
 
         carga.TotalFilas = resultadoLote.TotalFilas;
         carga.FilasInsertadas = insertadas;
-        // La cuenta real del motor (no resultadoLote.Aceptadas.Count): si otra carga
-        // concurrente insertó el mismo (periodo, código) justo entre el chequeo de
-        // ObtenerExistentesAsync y este INSERT, el ON CONFLICT del SP la absorbe
-        // sin lanzar, pero no queda en DetalleCargaError — ventana de carrera
-        // aceptada, de probabilidad casi nula en el alcance de este reto.
+        // El procedimiento es la fuente del conteo: puede absorber conflictos que
+        // aparezcan entre la consulta preventiva y el INSERT.
         carga.FilasRechazadas = resultadoLote.TotalFilas - insertadas;
 
         if (resultadoLote.NingunPeriodoAceptado)
         {
-            // maquina-estados.md: sin trabajo útil, la carga termina Rechazada o
-            // Bloqueada. Bloqueada gana si ALGÚN periodo está bloqueado por una
-            // carga activa — es la lectura más accionable ("hay una en curso,
-            // reintentar luego") frente a "ya está cargado, no hay nada que hacer".
+            // Bloqueada prevalece: comunica que existe una carga activa que puede reintentarse.
             carga.Transicionar(resultadoLote.Periodos.Values.Any(v => v == ResultadoPeriodo.Bloqueado)
                 ? EstadoCarga.Bloqueada
                 : EstadoCarga.Rechazada);
             await repositorio.GuardarCambiosAsync(ct);
-            return Resultado<EstadoCarga>.Exito(carga.Estado);   // Terminal sin Notificado (maquina-estados.md): no hay notificación que publicar.
+            // No hay un resultado de carga que deba notificarse.
+            return Resultado<EstadoCarga>.Exito(carga.Estado);
         }
 
         carga.Transicionar(EstadoCarga.Cargado);
         carga.Transicionar(EstadoCarga.Finalizado);
         await repositorio.GuardarCambiosAsync(ct);
 
-        // Resultado, no catch (design.md §D4): la carga ya es Finalizado en este
-        // punto — un fallo al publicar la notificación es un problema operativo
-        // secundario, no una razón para tratar como fallido el procesamiento que
-        // ya tuvo éxito. Se audita con LogWarning; un bug real dentro de
-        // IPublicador (no un Resultado.Fallo) sigue propagándose como excepción.
+        // Una falla esperada de notificación no revierte una carga ya finalizada;
+        // una excepción inesperada del adaptador sigue propagándose.
         var resultadoPublicacion = await publicador.PublicarAsync(
             new MensajeNotificacion(carga.Id, carga.Usuario, carga.FechaFin!.Value), correlationId, ct);
 

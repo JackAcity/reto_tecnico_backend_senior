@@ -10,20 +10,8 @@ using RabbitMQ.Client.Exceptions;
 namespace Mensajeria;
 
 /// <summary>
-/// Publicador con <b>publisher confirms</b>. Con <c>publisherConfirmationTrackingEnabled</c>
-/// (RabbitMQ.Client 7), el cliente correlaciona internamente el "basic.return" con
-/// el confirm pendiente: un routing key sin cola vinculada (<c>mandatory: true</c>)
-/// no se pierde en silencio — hace fallar <see cref="PublicarAsync{T}"/> con
-/// <see cref="RabbitMQ.Client.Exceptions.PublishReturnException"/>, que
-/// <c>ServicioCargas.RegistrarAsync</c> ya captura y trata como fallo de
-/// publicación (§C7: la carga pasa a <c>Fallida</c>). Verificado con un routing
-/// key inexistente contra un broker real — no es una suposición de la librería,
-/// es el comportamiento observado en RabbitMQ.Client 7.2.2.
-///
-/// El log adicional de <see cref="AlRetornarMensajeAsync"/> no es la red de
-/// seguridad (la excepción ya lo es): es una línea con campos estructurados
-/// (exchange, routing key, reply code) para diagnosticar más rápido cuál mensaje
-/// se devolvió, sin tener que parsear el texto de la excepción.
+/// Publica con confirms y <c>mandatory</c> para que una ruta sin cola falle en vez de perder el mensaje.
+/// El handler de retorno sólo aporta diagnóstico estructurado.
 /// </summary>
 public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
     : IAsyncDisposable
@@ -43,12 +31,9 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
             var propiedades = new BasicProperties
             {
                 ContentType = "application/json",
-                DeliveryMode = DeliveryModes.Persistent,   // sobrevive a un reinicio del broker
+                DeliveryMode = DeliveryModes.Persistent,
                 CorrelationId = correlationId,
                 MessageId = Guid.NewGuid().ToString("N"),
-                // "Fecha de registro" del evento, en el campo AMQP estándar para eso —
-                // no hace falta reinventarlo dentro del JSON, que además el enunciado
-                // define palabra por palabra (§2️⃣/§3️⃣, design.md §M2).
                 Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
             };
 
@@ -115,7 +100,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
     }
 }
 
-/// <summary>Fallo esperado del transporte RabbitMQ, traducido por el adaptador local.</summary>
+/// <summary>Fallo esperado de RabbitMQ traducido por el adaptador.</summary>
 public sealed class FalloPublicacionRabbitException(string mensaje, Exception interna)
     : Exception(mensaje, interna);
 

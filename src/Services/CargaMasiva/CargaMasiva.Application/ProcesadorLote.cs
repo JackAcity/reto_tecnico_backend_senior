@@ -4,21 +4,18 @@ namespace CargaMasiva.Application;
 
 public readonly record struct ClaveProducto(string Periodo, string CodigoProducto);
 
-/// <summary>Veredicto del §3.3 para un periodo concreto del archivo.</summary>
+/// <summary>Disponibilidad de un período para la carga en curso.</summary>
 public enum ResultadoPeriodo
 {
-    /// <summary>Sin cargas previas activas ni finalizadas. Se procesa.</summary>
+    /// <summary>No existe una carga que impida procesarlo.</summary>
     Libre,
-    /// <summary>Ya existe una carga Cargado/Finalizado/Notificado para ese periodo.</summary>
+    /// <summary>Ya fue cargado y no admite una nueva carga.</summary>
     YaCargado,
-    /// <summary>Existe otra carga Pendiente/EnProceso para ese periodo.</summary>
+    /// <summary>Otra carga activa lo tiene reservado.</summary>
     Bloqueado
 }
 
-/// <summary>
-/// Puerto que <see cref="ProcesadorLote"/> define y la capa de infraestructura implementa
-/// (Regla de Dependencia: el dominio no conoce PostgreSQL).
-/// </summary>
+/// <summary>Puerto para consultar la disponibilidad de períodos y productos.</summary>
 public interface IReglasCarga
 {
     Task<ResultadoPeriodo> ResolverPeriodoAsync(int idCarga, string periodo, CancellationToken ct);
@@ -32,14 +29,11 @@ public sealed record ResultadoProceso(
     IReadOnlyDictionary<string, ResultadoPeriodo> Periodos)
 {
     public int TotalFilas => Aceptadas.Count + Rechazadas.Count;
-    /// <summary>True cuando ningún periodo del archivo pudo procesarse (estado terminal Rechazada/Bloqueada).</summary>
+    /// <summary>Indica si ningún período quedó disponible para procesar.</summary>
     public bool NingunPeriodoAceptado => Periodos.Count > 0 && Periodos.Values.All(p => p != ResultadoPeriodo.Libre);
 }
 
-/// <summary>
-/// Núcleo funcional del reto. Sin dependencias de Excel, base de datos ni red:
-/// recibe filas crudas y devuelve el veredicto de cada una.
-/// </summary>
+/// <summary>Aplica las reglas de carga sin conocer Excel, red ni persistencia.</summary>
 public sealed class ProcesadorLote(IReglasCarga reglas)
 {
     public async Task<ResultadoProceso> ProcesarAsync(int idCarga, IEnumerable<FilaCruda> filas, CancellationToken ct = default)
@@ -48,7 +42,6 @@ public sealed class ProcesadorLote(IReglasCarga reglas)
         var rechazadas = new List<FilaRechazada>();
         var observaciones = new List<FilaRechazada>();
 
-        // Paso 1 — normalización. Las filas totalmente vacías desaparecen sin auditarse.
         foreach (var cruda in filas)
         {
             var r = NormalizadorFila.Normalizar(cruda);
@@ -57,14 +50,12 @@ public sealed class ProcesadorLote(IReglasCarga reglas)
             observaciones.AddRange(r.Observaciones);
         }
 
-        // Paso 2 — resolución de periodos. Un archivo puede traer varios (§C3):
-        // el de muestra trae 2025-01, 2025-02 y 2025-03.
+        // Un archivo puede mezclar períodos; cada uno se consulta una sola vez.
         var periodos = new Dictionary<string, ResultadoPeriodo>();
         foreach (var periodo in candidatas.Select(c => c.Periodo).Distinct().Order())
             periodos[periodo] = await reglas.ResolverPeriodoAsync(idCarga, periodo, ct);
 
-        // Paso 3 — se descartan las filas de periodos no disponibles. El procesamiento
-        // es parcial: las filas de periodos libres siguen adelante.
+        // Los períodos no disponibles se rechazan sin bloquear los períodos libres.
         var vivas = new List<FilaProducto>(candidatas.Count);
         foreach (var fila in candidatas)
         {
@@ -77,9 +68,7 @@ public sealed class ProcesadorLote(IReglasCarga reglas)
                 fila.Periodo));
         }
 
-        // Paso 4 — duplicados DENTRO del mismo archivo. El enunciado solo menciona
-        // consultar la base, pero el archivo de muestra trae 46 pares repetidos (§C4).
-        // Gana la primera ocurrencia.
+        // Ante duplicados del archivo, la primera fila conserva la clave.
         var vistas = new HashSet<ClaveProducto>();
         var unicas = new List<FilaProducto>(vivas.Count);
         foreach (var fila in vivas)
@@ -91,7 +80,6 @@ public sealed class ProcesadorLote(IReglasCarga reglas)
                 nameof(fila.CodigoProducto), MotivoRechazo.Existente, fila.CodigoProducto));
         }
 
-        // Paso 5 — duplicados ya presentes en base.
         var existentes = unicas.Count == 0
             ? (IReadOnlySet<ClaveProducto>)new HashSet<ClaveProducto>()
             : await reglas.ObtenerExistentesAsync([.. vistas], ct);

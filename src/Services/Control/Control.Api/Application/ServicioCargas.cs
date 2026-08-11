@@ -53,8 +53,7 @@ public sealed class ServicioCargas(
         if (tamanoBytes <= 0)
             return "El archivo está vacío.";
 
-        // La validación de negocio corre ANTES del techo de transporte, para que el
-        // usuario reciba este mensaje y no un 413 crudo del gateway (§C12).
+        // El límite de negocio devuelve un error útil antes de que el gateway responda 413.
         var maximoBytes = tamanoMaximoMb * 1024L * 1024L;
         if (tamanoBytes > maximoBytes)
             return $"El archivo supera el máximo de {tamanoMaximoMb} MB.";
@@ -62,21 +61,15 @@ public sealed class ServicioCargas(
         return null;
     }
 
-    /// <summary>Firma ZIP local-file-header: todo <c>.xlsx</c> (OOXML) es, por dentro, un zip.</summary>
+    /// <summary>Cabecera ZIP que identifica un contenedor OOXML.</summary>
     private static readonly byte[] FirmaZip = [0x50, 0x4B, 0x03, 0x04];
 
-    /// <summary>
-    /// La extensión es un metadato que el cliente controla — renombrar cualquier
-    /// archivo a <c>.xlsx</c> pasa <see cref="ValidarArchivo"/> sin problema. Esto
-    /// verifica que el contenido empiece como zip antes de aceptarlo, para no
-    /// gastar SeaweedFS + una cola + un ciclo de CargaMasiva en basura que iba a
-    /// fallar de todos modos al intentar leerse como Excel.
-    /// </summary>
+    /// <summary>Evita encolar archivos renombrados con extensión <c>.xlsx</c>.</summary>
     public static async Task<string?> ValidarFirmaAsync(Stream contenido, CancellationToken ct = default)
     {
         var firma = new byte[FirmaZip.Length];
         var leidos = await contenido.ReadAsync(firma, ct);
-        contenido.Position = 0;   // el stream se reutiliza para la subida real
+        contenido.Position = 0;
 
         return leidos == FirmaZip.Length && firma.AsSpan().SequenceEqual(FirmaZip)
             ? null
@@ -86,11 +79,9 @@ public sealed class ServicioCargas(
     public async Task<ResultadoRegistro> RegistrarAsync(
         Stream contenido, string nombreArchivo, long tamanoBytes, string usuario, string correlationId, CancellationToken ct = default)
     {
-        // 1. El archivo primero: si el almacenamiento falla no queda una carga
-        //    huérfana apuntando a una ruta que no existe.
+        // Persistir el archivo primero evita una carga que apunte a una ruta inexistente.
         var ruta = await almacen.SubirAsync(contenido, nombreArchivo, ct);
 
-        // 2. Auditoría de quién y cuándo (§2️⃣), con el estado inicial del enunciado.
         var carga = new CargaArchivo
         {
             NombreArchivo = nombreArchivo,
@@ -104,14 +95,8 @@ public sealed class ServicioCargas(
         repositorio.Agregar(carga);
         await repositorio.GuardarCambiosAsync(ct);
 
-        // 3. Publicar es un dual write (§C7): no hay transacción común entre la base
-        //    y el broker. Se publica inmediatamente después del commit y, si falla,
-        //    la carga queda en el estado terminal Fallida en vez de quedar colgada
-        //    en Pendiente para siempre. El patrón correcto sería Transactional
-        //    Outbox; está declarado como fuera de alcance en el README.
-        // Resultado, no catch (design.md §D4): un fallo esperado de publicación se
-        // comunica como Resultado.Fallo; un bug real dentro de IPublicador se
-        // propaga como excepción no controlada, no se confunde con esto.
+        // Base y broker no comparten transacción. Si publicar falla de forma esperada,
+        // la carga se cierra como Fallida en lugar de quedar Pendiente indefinidamente.
         var resultado = await publicador.PublicarAsync(
             new MensajeCarga(carga.Id, ruta, usuario), correlationId, ct);
 

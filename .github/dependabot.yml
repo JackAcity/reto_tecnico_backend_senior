@@ -4,7 +4,6 @@ updates:
     directories:
       - "/src/*"
       - "/src/Services/*/*"
-      - "/src/Shared/*"
       - "/tests/Reto.Tests"
     schedule:
       interval: "weekly"

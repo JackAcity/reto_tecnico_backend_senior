@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.10" />
   </ItemGroup>
 
   <PropertyGroup>

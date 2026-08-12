@@ -2,7 +2,6 @@ using BuildingBlocks;
 using CargaMasiva.Application;
 using CargaMasiva.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
-using Persistencia;
 
 namespace Reto.Tests;
 

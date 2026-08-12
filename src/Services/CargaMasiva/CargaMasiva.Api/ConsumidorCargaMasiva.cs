@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BuildingBlocks;
 using CargaMasiva.Application;
+using CargaMasiva.Infrastructure;
 using Mensajeria;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -108,7 +109,7 @@ public sealed class ConsumidorCargaMasiva(
     private async Task MarcarFallidaAsync(int idCarga, string error, CancellationToken ct)
     {
         await using var alcance = scopeFactory.CreateAsyncScope();
-        var db = alcance.ServiceProvider.GetRequiredService<Persistencia.RetoDbContext>();
+        var db = alcance.ServiceProvider.GetRequiredService<CargaMasivaDbContext>();
         var carga = await db.CargaArchivos.FindAsync([idCarga], ct);
 
         // Una reentrega puede llegar después de que otro intento alcance un estado terminal.

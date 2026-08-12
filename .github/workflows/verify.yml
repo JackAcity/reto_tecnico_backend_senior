@@ -41,6 +41,25 @@ jobs:
         shell: pwsh
         run: ./scripts/ci/Assert-Gate2ASecretPolicy.ps1
 
+  trivy:
+    name: trivy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 1
+      - name: Scan filesystem, secrets and infrastructure configuration
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+
   backend:
     name: backend
     runs-on: ubuntu-24.04

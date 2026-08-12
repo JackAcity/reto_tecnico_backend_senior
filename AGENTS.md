@@ -80,8 +80,9 @@ ejecutar, indique el motivo y no lo convierta en un resultado implícito.
   evento de notificación.
 - `Notificaciones` envía el correo y cierra `Finalizado → Notificado`.
 - `BuildingBlocks` contiene contratos y utilidades técnicas simples.
-- `Shared` contiene adaptadores reutilizables; no debe referenciar
-  `BuildingBlocks`.
+- No existe una capa `Shared`: los adaptadores concretos pertenecen al servicio
+  que los consume. Reubíquelos solo si aparece una responsabilidad transversal
+  real y se puede conservar la dirección de dependencias.
 - `ServiceHost` compone dependencias. No contiene reglas de negocio.
 
 La guía visual en [docs/explicacion/README.md](docs/explicacion/README.md)

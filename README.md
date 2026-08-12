@@ -251,6 +251,7 @@ El [documento de diseño](openspec/changes/carga-masiva-microservicios/design.md
 - El tamaño de archivo se valida en el borde y vuelve a comprobarse en el camino interno. El valor por defecto de entrega es **25 MB**.
 - Correlation IDs acompañan las solicitudes para seguirlas a través de los servicios y los logs.
 - Las variables de `.env` son configuración local. No convierta sus valores de ejemplo en secretos de producción.
+- Todo pull request y cambio en main ejecuta un escaneo Trivy bloqueante de vulnerabilidades, secretos y configuración de infraestructura de severidad alta o crítica.
 
 ## Mapa del repositorio
 

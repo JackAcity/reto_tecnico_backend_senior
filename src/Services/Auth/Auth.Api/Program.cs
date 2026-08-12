@@ -1,10 +1,9 @@
 using Auth.Api;
 using ServiceHost;
-using Persistencia;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Auth");
-builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddPersistenciaAuth(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.Configure<OpcionesJwt>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<IRepositorioUsuarios, RepositorioUsuariosEf>();
 builder.Services.AddSingleton<IProtectorContrasenas, ProtectorContrasenas>();
@@ -17,7 +16,7 @@ app.UseServiceDefaults("Auth");
 // Control migra el esquema; Auth sólo siembra las cuentas necesarias para acceder.
 await using (var alcance = app.Services.CreateAsyncScope())
 {
-    var db = alcance.ServiceProvider.GetRequiredService<RetoDbContext>();
+    var db = alcance.ServiceProvider.GetRequiredService<AuthDbContext>();
 
     // La identidad y el rol deben ser explícitos; un rol predeterminado podría elevar privilegios.
     var creado = await db.SembrarUsuarioAsync(

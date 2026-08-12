@@ -1,10 +1,10 @@
-using Mensajeria;
+using CargaMasiva.Infrastructure;
 
 namespace Reto.Tests;
 
 /// <summary>
 /// Puro: no necesita RabbitMQ. Reproduce la forma exacta en que RabbitMQ.Client
-/// decodifica x-death. Compartido por los dos consumidores (carga y notificaciones).
+/// decodifica x-death. Se verifica contra el adaptador local de CargaMasiva; Notificaciones protege el mismo contrato desde su propio adaptador.
 /// </summary>
 public class ContarIntentosPreviosTests
 {
@@ -16,11 +16,11 @@ public class ContarIntentosPreviosTests
 
     [Fact]
     public void SinHeaders_CeroIntentos() =>
-        Assert.Equal(0, Topologia.ContarIntentosPrevios(null, Topologia.ColaCarga));
+        Assert.Equal(0, TopologiaRabbit.ContarIntentosPrevios(null, TopologiaRabbit.ColaCarga));
 
     [Fact]
     public void SinXDeath_CeroIntentos() =>
-        Assert.Equal(0, Topologia.ContarIntentosPrevios(new Dictionary<string, object?>(), Topologia.ColaCarga));
+        Assert.Equal(0, TopologiaRabbit.ContarIntentosPrevios(new Dictionary<string, object?>(), TopologiaRabbit.ColaCarga));
 
     [Fact]
     public void ConXDeathDeLaColaDeCarga_DevuelveElCount()
@@ -30,7 +30,7 @@ public class ContarIntentosPreviosTests
             ["x-death"] = new List<object?> { TablaMuerte("carga_masiva", 2) }
         };
 
-        Assert.Equal(2, Topologia.ContarIntentosPrevios(headers, Topologia.ColaCarga));
+        Assert.Equal(2, TopologiaRabbit.ContarIntentosPrevios(headers, TopologiaRabbit.ColaCarga));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class ContarIntentosPreviosTests
             ["x-death"] = new List<object?> { TablaMuerte("otra.cola", 5) }
         };
 
-        Assert.Equal(0, Topologia.ContarIntentosPrevios(headers, Topologia.ColaCarga));
+        Assert.Equal(0, TopologiaRabbit.ContarIntentosPrevios(headers, TopologiaRabbit.ColaCarga));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class ContarIntentosPreviosTests
             }
         };
 
-        Assert.Equal(1, Topologia.ContarIntentosPrevios(headers, Topologia.ColaCarga));
+        Assert.Equal(1, TopologiaRabbit.ContarIntentosPrevios(headers, TopologiaRabbit.ColaCarga));
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class ContarIntentosPreviosTests
             ["x-death"] = new List<object?> { TablaMuerte("notificaciones", 3) }
         };
 
-        Assert.Equal(0, Topologia.ContarIntentosPrevios(headers, Topologia.ColaCarga));
-        Assert.Equal(3, Topologia.ContarIntentosPrevios(headers, Topologia.ColaNotificaciones));
+        Assert.Equal(0, TopologiaRabbit.ContarIntentosPrevios(headers, TopologiaRabbit.ColaCarga));
+        Assert.Equal(3, TopologiaRabbit.ContarIntentosPrevios(headers, TopologiaRabbit.ColaNotificaciones));
     }
 }

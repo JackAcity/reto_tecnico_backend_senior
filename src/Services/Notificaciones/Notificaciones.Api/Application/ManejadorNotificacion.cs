@@ -1,4 +1,3 @@
-using CargaMasiva.Domain;
 using BuildingBlocks;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +9,7 @@ namespace Notificaciones.Api;
 /// </summary>
 public interface IRepositorioNotificaciones
 {
-    Task<CargaArchivo> ObtenerAsync(int idCarga, CancellationToken ct);
+    Task<CargaPorNotificar> ObtenerAsync(int idCarga, CancellationToken ct);
     Task GuardarCambiosAsync(CancellationToken ct);
 }
 
@@ -30,7 +29,7 @@ public sealed class ManejadorNotificacion(IRepositorioNotificaciones repositorio
         // correo. Si por algún motivo la carga no llegó a Finalizado (no debería
         // pasar: Notificaciones solo recibe mensajes que CargaMasiva publicó
         // después de transicionar), tampoco hay nada que hacer todavía.
-        if (carga.Estado != EstadoCarga.Finalizado)
+        if (!carga.EstaListaParaNotificar)
         {
             log.LogWarning("Notificación de carga {IdCarga} ignorada: estado actual {Estado}.", carga.Id, carga.Estado);
             return;
@@ -39,7 +38,7 @@ public sealed class ManejadorNotificacion(IRepositorioNotificaciones repositorio
         await correo.EnviarResumenCargaAsync(
             carga.Usuario, carga.Id, carga.FilasInsertadas, carga.FilasRechazadas, mensaje.FechaFin, ct);
 
-        carga.Transicionar(EstadoCarga.Notificado);
+        carga.MarcarNotificada();
         await repositorio.GuardarCambiosAsync(ct);
     }
 }

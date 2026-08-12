@@ -8,30 +8,28 @@ Este diagrama representa referencias de proyecto permitidas; no el recorrido de 
 flowchart RL
     Host["ServiceHost<br/>composición / arranque"]
     Api["API<br/>HTTP, consumidores, endpoints"]
-    Infra["Infrastructure<br/>adaptadores de Postgres, RabbitMQ y SeaweedFS"]
+    Infra["Infrastructure local<br/>adaptadores de Postgres, RabbitMQ y SeaweedFS"]
     App["Application<br/>casos de uso y puertos"]
     Domain["Domain<br/>reglas, entidades y estados"]
-    Shared["Shared<br/>adaptadores técnicos reutilizables"]
-    Blocks["BuildingBlocks<br/>Resultado y contratos simples"]
+    Blocks["BuildingBlocks<br/>Resultado y contratos interservicio puros"]
 
     Host --> Api
     Host --> Infra
     Api --> App
     Api --> Infra
     Infra --> App
-    Infra --> Shared
+    Infra --> Blocks
     App --> Domain
     App --> Blocks
 
     Domain -. "prohibido: no conoce detalles técnicos" .-> Infra
-    Shared -. "prohibido: no referencia BuildingBlocks" .-> Blocks
-    Blocks -. "prohibido: no referencia Shared ni hosts" .-> Shared
+    Blocks -. "prohibido: no referencia hosts ni frameworks" .-> Api
 
     classDef core fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
     classDef adapter fill:#fff3e0,stroke:#ef6c00,color:#e65100
     classDef boundary fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     class Domain,App,Blocks core
-    class Infra,Shared adapter
+    class Infra adapter
     class Host,Api boundary
 ```
 
@@ -43,11 +41,10 @@ Las líneas punteadas rojas conceptuales no son dependencias existentes: declara
 |---|---|---|
 | Domain | Sus propias reglas y tipos de negocio | Infrastructure, API, EF Core, RabbitMQ, SeaweedFS |
 | Application | Domain y contratos mínimos | Implementaciones concretas de adaptadores |
-| Infrastructure | Application, Shared y librerías técnicas | Reglas de negocio del host |
-| API | Application e Infrastructure para composición | Lógica de negocio duplicada |
+| Infrastructure local | Application, BuildingBlocks y librerías técnicas | Reglas de negocio del host o infraestructura de otro servicio |
+| API | Application e Infrastructure local para composición | Lógica de negocio duplicada |
 | ServiceHost | APIs e infraestructura para registrar dependencias | Reglas de negocio |
-| Shared | Dependencias técnicas propias | BuildingBlocks y capas de un servicio |
-| BuildingBlocks | BCL y contratos simples | Shared, hosts, frameworks y servicios |
+| BuildingBlocks | BCL y contratos simples | Hosts, frameworks, adaptadores concretos y servicios |
 
 ## Cómo se aplica al flujo real
 
@@ -56,7 +53,7 @@ sequenceDiagram
     participant Endpoint as API / Consumidor
     participant Caso as Application
     participant Puerto as Puerto definido por Application
-    participant Adaptador as Infrastructure / Shared
+    participant Adaptador as Adaptador local del servicio
     participant Recurso as Postgres, RabbitMQ o SeaweedFS
 
     Endpoint->>Caso: ejecuta caso de uso
@@ -68,15 +65,15 @@ sequenceDiagram
     Caso-->>Endpoint: resultado de aplicación
 ```
 
-El caso de uso no construye un cliente de RabbitMQ ni usa `RetoDbContext` directamente; declara lo que necesita mediante un puerto. El host decide qué adaptador concreto se registra.
+El caso de uso no construye un cliente de RabbitMQ ni usa un `DbContext` directamente; declara lo que necesita mediante un puerto. El host decide qué adaptador concreto local se registra. Los contratos compartidos (`MensajeCarga`, `MensajeNotificacion` y `TopologiaMensajeria`) no instancian infraestructura ni introducen paquetes técnicos.
 
 ## Qué evita una regresión
 
 La guardia de arquitectura comprueba, entre otros límites, que:
 
-- `Shared/Mensajeria` no tenga una referencia a `BuildingBlocks`.
+- `Shared/Persistencia` y `Shared/Mensajeria` no formen parte de la solución.
 - `BuildingBlocks` no declare `FrameworkReference` ni `PackageReference`.
-- El núcleo de los servicios no incorpore frameworks técnicos.
+- El núcleo de los servicios no incorpore frameworks técnicos ni referencias a dominios de otro servicio.
 
 La prueba está en [GuardiaArquitecturaTests.cs](../../tests/Reto.Tests/GuardiaArquitecturaTests.cs). El razonamiento completo y los puertos extraídos están en el [diseño hexagonal transversal](../../openspec/changes/arquitectura-hexagonal-transversal/design.md).
 

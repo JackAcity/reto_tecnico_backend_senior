@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Persistencia;
 
 namespace Control.Api;
 
 /// <summary>Adaptador EF de <see cref="IConsultaCargas"/> (design.md §D2) — todas las consultas <c>AsNoTracking</c> sin excepción.</summary>
-public sealed class ConsultaCargasEf(RetoDbContext db) : IConsultaCargas
+public sealed class ConsultaCargasEf(ControlDbContext db) : IConsultaCargas
 {
     public async Task<IReadOnlyList<ResumenCarga>> HistorialAsync(int limite, CancellationToken ct) =>
         await db.CargaArchivos
@@ -40,7 +39,7 @@ public sealed class ConsultaCargasEf(RetoDbContext db) : IConsultaCargas
             .OrderBy(e => e.Id)
             .Take(limiteErrores)
             .Select(e => new ErrorAuditado(
-                e.NumeroFila, e.Periodo, e.CodigoProducto, e.Columna, e.Motivo.ToString(), e.ValorCrudo))
+                e.NumeroFila, e.Periodo, e.CodigoProducto, e.Columna, e.Motivo, e.ValorCrudo))
             .ToListAsync(ct);
 
         return new DetalleCarga(

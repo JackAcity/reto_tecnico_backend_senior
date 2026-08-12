@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
@@ -21,12 +22,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Application\CargaMasiva.Application.csproj" />
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Infrastructure\CargaMasiva.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Shared\Persistencia\Persistencia.csproj" />
     <ProjectReference Include="..\..\src\Services\Auth\Auth.Api\Auth.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Control\Control.Api\Control.Api.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\src\ServiceHost\ServiceHost.csproj" />
-    <ProjectReference Include="..\..\src\Shared\Mensajeria\Mensajeria.csproj" />
     <ProjectReference Include="..\..\src\Services\CargaMasiva\CargaMasiva.Api\CargaMasiva.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Notificaciones\Notificaciones.Api\Notificaciones.Api.csproj" />
   </ItemGroup>

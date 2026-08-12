@@ -1,17 +1,18 @@
 using System.Text.Json;
 using BuildingBlocks;
+using CargaMasiva.Infrastructure;
 
 namespace Reto.Tests;
 
 /// <summary>
 /// §3.3g/matriz-requisitos.md: el enunciado da el JSON exacto de cada mensaje.
-/// Los nombres de campo ya salían bien por camelCase; el valor de fechaFin no —
+/// La forma JSON es responsabilidad del adaptador que publica; el contrato puro conserva los datos. El valor de fechaFin no —
 /// DateTimeOffset por defecto agrega offset y decimales
 /// ("2026-08-07T00:48:09.767+00:00"), el enunciado da "2025-02-10T10:20:00".
 /// </summary>
 public class ContratoMensajesTests
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = SerializadorMensajesRabbit.CrearOpciones();
 
     [Fact]
     public void MensajeCarga_SerializaConLosNombresLiteralesDelEnunciado()

@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,7 +18,7 @@ namespace CargaMasiva.Infrastructure;
 public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
     : IAsyncDisposable
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = SerializadorMensajesRabbit.CrearOpciones();
 
     private readonly OpcionesRabbit _opciones = opciones.Value;
     private readonly SemaphoreSlim _candado = new(1, 1);
@@ -112,4 +114,26 @@ public static class MensajeriaExtensiones
         servicios.AddSingleton<PublicadorRabbit>();
         return servicios;
     }
+}
+
+/// <summary>Configuración del wire format RabbitMQ propiedad de CargaMasiva.</summary>
+public static class SerializadorMensajesRabbit
+{
+    public static JsonSerializerOptions CrearOpciones()
+    {
+        var opciones = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        opciones.Converters.Add(new FechaFinJsonConverter());
+        return opciones;
+    }
+}
+
+internal sealed class FechaFinJsonConverter : JsonConverter<DateTimeOffset>
+{
+    private const string Formato = "yyyy-MM-ddTHH:mm:ss";
+
+    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        DateTimeOffset.Parse(reader.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.UtcDateTime.ToString(Formato, CultureInfo.InvariantCulture));
 }

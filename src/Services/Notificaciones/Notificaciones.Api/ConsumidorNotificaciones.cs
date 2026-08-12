@@ -27,7 +27,7 @@ public sealed class ConsumidorNotificaciones(
 {
     public const int MaxIntentos = 3;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = SerializadorMensajesRabbit.CrearOpciones();
 
     private IConnection? _conexion;
     private IChannel? _canal;

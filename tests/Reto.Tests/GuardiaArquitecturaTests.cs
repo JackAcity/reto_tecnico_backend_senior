@@ -54,6 +54,10 @@ public sealed class GuardiaArquitecturaTests
 
         Assert.DoesNotContain("FrameworkReference", nucleo, StringComparison.Ordinal);
         Assert.DoesNotContain("PackageReference", nucleo, StringComparison.Ordinal);
+
+        var contratos = File.ReadAllText(Proyecto("src", "BuildingBlocks", "Mensajes.cs"));
+        Assert.DoesNotContain("JsonConverter", contratos, StringComparison.Ordinal);
+        Assert.DoesNotContain("JsonSerializer", contratos, StringComparison.Ordinal);
     }
 
     [Theory]

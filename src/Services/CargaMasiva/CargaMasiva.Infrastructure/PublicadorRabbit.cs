@@ -7,7 +7,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 
-namespace Mensajeria;
+namespace CargaMasiva.Infrastructure;
 
 /// <summary>
 /// Publica con confirms y <c>mandatory</c> para que una ruta sin cola falle en vez de perder el mensaje.
@@ -38,7 +38,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
             };
 
             await canal.BasicPublishAsync(
-                Topologia.Exchange, routingKey, mandatory: true, propiedades,
+                TopologiaRabbit.Exchange, routingKey, mandatory: true, propiedades,
                 JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
 
         }
@@ -73,7 +73,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
                 ct);
             _canal.BasicReturnAsync += AlRetornarMensajeAsync;
 
-            await Topologia.DeclararAsync(_canal, _opciones.ReintentoSegundos, ct);
+            await TopologiaRabbit.DeclararAsync(_canal, _opciones.ReintentoSegundos, ct);
             return _canal;
         }
         finally
@@ -106,7 +106,7 @@ public sealed class FalloPublicacionRabbitException(string mensaje, Exception in
 
 public static class MensajeriaExtensiones
 {
-    public static IServiceCollection AddMensajeria(this IServiceCollection servicios, IConfiguration config)
+    public static IServiceCollection AddMensajeriaRabbit(this IServiceCollection servicios, IConfiguration config)
     {
         servicios.Configure<OpcionesRabbit>(config.GetSection("RabbitMq"));
         servicios.AddSingleton<PublicadorRabbit>();

@@ -2,13 +2,12 @@ using ServiceHost;
 using CargaMasiva.Api;
 using CargaMasiva.Application;
 using CargaMasiva.Infrastructure;
-using Mensajeria;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("CargaMasiva");
 builder.Services.AddPersistenciaCargaMasiva(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.AddAlmacenCargaSeaweedFs(builder.Configuration);
-builder.Services.AddMensajeria(builder.Configuration);
+builder.Services.AddMensajeriaRabbit(builder.Configuration);
 
 var cadenaPostgres = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("Falta ConnectionStrings:Postgres.");

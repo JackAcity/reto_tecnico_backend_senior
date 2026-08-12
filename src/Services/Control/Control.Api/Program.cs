@@ -1,6 +1,5 @@
 using ServiceHost;
 using Control.Api;
-using Mensajeria;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Control");
 builder.Services.AddPersistenciaControl(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.AddAlmacenCargasSeaweedFs(builder.Configuration);
-builder.Services.AddMensajeria(builder.Configuration);
+builder.Services.AddMensajeriaRabbit(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);
 builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
 builder.Services.AddScoped<IConsultaCargas, ConsultaCargasEf>();

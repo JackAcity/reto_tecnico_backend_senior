@@ -1,5 +1,4 @@
 using BuildingBlocks;
-using Mensajeria;
 
 namespace Control.Api;
 
@@ -10,7 +9,7 @@ public sealed class PublicadorCargasRabbit(PublicadorRabbit publicador) : IPubli
     {
         try
         {
-            await publicador.PublicarAsync(Topologia.RkCarga, mensaje, correlationId, ct);
+            await publicador.PublicarAsync(TopologiaRabbit.RkCarga, mensaje, correlationId, ct);
             return Resultado.Exito();
         }
         catch (FalloPublicacionRabbitException ex)

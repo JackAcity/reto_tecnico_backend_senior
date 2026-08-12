@@ -25,9 +25,6 @@
     <Project Path="src/Services/Notificaciones/Notificaciones.Api/Notificaciones.Api.csproj" />
     <Project Path="src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj" />
   </Folder>
-  <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/Mensajeria/Mensajeria.csproj" />
-  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Reto.Tests/Reto.Tests.csproj" />
   </Folder>

@@ -1,6 +1,5 @@
 using BuildingBlocks;
 using CargaMasiva.Application;
-using Mensajeria;
 
 namespace CargaMasiva.Infrastructure;
 
@@ -11,7 +10,7 @@ public sealed class PublicadorNotificacionRabbit(PublicadorRabbit publicador) : 
     {
         try
         {
-            await publicador.PublicarAsync(Topologia.RkNotificacion, mensaje, correlationId, ct);
+            await publicador.PublicarAsync(TopologiaRabbit.RkNotificacion, mensaje, correlationId, ct);
             return Resultado.Exito();
         }
         catch (FalloPublicacionRabbitException ex)

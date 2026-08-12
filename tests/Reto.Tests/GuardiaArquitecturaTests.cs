@@ -48,12 +48,10 @@ public sealed class GuardiaArquitecturaTests
     }
 
     [Fact]
-    public void Mensajeria_NoReferenciaBuildingBlocks_Y_ElNucleoNoTieneFrameworks()
+    public void NucleoNoTieneFrameworksNiPaquetes()
     {
-        var mensajeria = File.ReadAllText(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj"));
         var nucleo = File.ReadAllText(Proyecto("src", "BuildingBlocks", "BuildingBlocks.csproj"));
 
-        Assert.DoesNotContain("BuildingBlocks.csproj", mensajeria, StringComparison.Ordinal);
         Assert.DoesNotContain("FrameworkReference", nucleo, StringComparison.Ordinal);
         Assert.DoesNotContain("PackageReference", nucleo, StringComparison.Ordinal);
     }
@@ -122,4 +120,14 @@ public sealed class GuardiaArquitecturaTests
 
         var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
         Assert.DoesNotContain("Shared/Persistencia", solucion, StringComparison.Ordinal);
-    }}
+    }
+
+    [Fact]
+    public void MensajeriaCompartida_NoFormaParteDeLaSolucion()
+    {
+        Assert.False(File.Exists(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj")));
+
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Mensajeria", solucion, StringComparison.Ordinal);
+    }
+}

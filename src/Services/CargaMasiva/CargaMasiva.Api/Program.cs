@@ -1,4 +1,3 @@
-using Almacenamiento;
 using ServiceHost;
 using CargaMasiva.Api;
 using CargaMasiva.Application;
@@ -9,7 +8,7 @@ using Persistencia;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("CargaMasiva");
 builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
-builder.Services.AddAlmacenamiento(builder.Configuration);
+builder.Services.AddAlmacenCargaSeaweedFs(builder.Configuration);
 builder.Services.AddMensajeria(builder.Configuration);
 
 var cadenaPostgres = builder.Configuration.GetConnectionString("Postgres")
@@ -18,7 +17,6 @@ builder.Services.AddScoped<IReglasCarga>(_ => new ReglasCargaSql(cadenaPostgres)
 builder.Services.AddScoped<IInsertadorMasivo>(_ => new InsertadorMasivo(cadenaPostgres));
 builder.Services.AddScoped<ILectorExcel, LectorExcel>();
 builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
-builder.Services.AddScoped<IAlmacenCarga, AlmacenCargaSeaweedFs>();
 builder.Services.AddScoped<IPublicadorNotificacion, PublicadorNotificacionRabbit>();
 builder.Services.AddScoped<ProcesadorLote>();
 builder.Services.AddScoped<ManejadorCarga>();

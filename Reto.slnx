@@ -25,7 +25,6 @@
     <Project Path="src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/Almacenamiento/Almacenamiento.csproj" />
     <Project Path="src/Shared/Mensajeria/Mensajeria.csproj" />
     <Project Path="src/Shared/Persistencia/Persistencia.csproj" />
   </Folder>

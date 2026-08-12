@@ -83,4 +83,19 @@ public sealed class GuardiaArquitecturaTests
             Assert.DoesNotContain("using Microsoft.IdentityModel", contenido, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void SeaweedFs_SeRegistraSoloEnLosServiciosQueLoPoseen()
+    {
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Almacenamiento", solucion, StringComparison.Ordinal);
+
+        var proyectos = Directory.GetFiles(Proyecto("src"), "*.csproj", SearchOption.AllDirectories);
+        foreach (var proyecto in proyectos)
+        {
+            var contenido = File.ReadAllText(proyecto);
+            Assert.DoesNotContain("Shared\\Almacenamiento", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("Shared/Almacenamiento", contenido, StringComparison.Ordinal);
+        }
+    }
 }

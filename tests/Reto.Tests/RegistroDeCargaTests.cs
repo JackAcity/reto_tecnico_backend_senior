@@ -13,6 +13,9 @@ file sealed class AlmacenFalso : IAlmacenCargas
 {
     public Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct) =>
         Task.FromResult($"seaweed://cargas/prueba/{nombreArchivo}");
+
+    public Task<Stream> DescargarAsync(string ruta, CancellationToken ct) =>
+        Task.FromResult<Stream>(new MemoryStream());
 }
 
 /// <summary>

@@ -28,7 +28,7 @@ public interface IConsultaCargas
 
 /// <summary>
 /// El lado de lectura del §5️⃣: historial y detalle. Separado de <see cref="ServicioCargas"/>
-/// (CQRS-lite, design.md §3) — nunca escribe, así que no necesita <c>IAlmacenArchivos</c>
+/// (CQRS-lite, design.md §3) — nunca escribe, así que no necesita <c>IAlmacenCargas</c>
 /// ni <c>IPublicador</c>. Delega en <see cref="IConsultaCargas"/> (Infrastructure): el
 /// mismo nombre que el resto de casos de uso inyecta desde Program.cs, sin importar
 /// dónde vive la query real.

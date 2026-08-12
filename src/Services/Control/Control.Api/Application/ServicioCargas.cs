@@ -18,6 +18,7 @@ public interface IRepositorioCargas
 public interface IAlmacenCargas
 {
     Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct);
+    Task<Stream> DescargarAsync(string ruta, CancellationToken ct = default);
 }
 
 /// <summary>Publica el comando de procesamiento de una carga recién registrada.</summary>

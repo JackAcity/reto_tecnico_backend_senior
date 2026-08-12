@@ -1,4 +1,3 @@
-using Almacenamiento;
 using ServiceHost;
 using Control.Api;
 using Mensajeria;
@@ -9,12 +8,11 @@ using Persistencia;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Control");
 builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
-builder.Services.AddAlmacenamiento(builder.Configuration);
+builder.Services.AddAlmacenCargasSeaweedFs(builder.Configuration);
 builder.Services.AddMensajeria(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);
 builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
 builder.Services.AddScoped<IConsultaCargas, ConsultaCargasEf>();
-builder.Services.AddScoped<IAlmacenCargas, AlmacenCargasSeaweedFs>();
 builder.Services.AddScoped<IPublicadorCargas, PublicadorCargasRabbit>();
 builder.Services.AddScoped<ServicioCargas>();
 builder.Services.AddScoped<ConsultaCargas>();
@@ -76,7 +74,7 @@ app.MapGet("/cargas/{id:int}", async (int id, ConsultaCargas consulta, Cancellat
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
 // El endpoint no expone la ruta interna del almacenamiento.
-app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenArchivos almacen, CancellationToken ct) =>
+app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenCargas almacen, CancellationToken ct) =>
 {
     var archivo = await consulta.ArchivoAsync(id, ct);
     if (archivo is null)

@@ -46,28 +46,41 @@ jobs:
   trivy:
     name: trivy
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Enforce Trivy security threshold
+      - name: Enforce Trivy vulnerability and configuration threshold
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.71.0
           scan-type: fs
           scan-ref: .
-          scanners: vuln,misconfig,secret
+          scanners: vuln,misconfig
           severity: HIGH,CRITICAL
           exit-code: 1
-      - name: Generate Trivy evidence
+      - name: Enforce Trivy secret threshold without publishing matches
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.71.0
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: json
+          output: trivy-secret-results.json
+      - name: Generate Trivy vulnerability and configuration evidence
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.71.0
           scan-type: fs
           scan-ref: .
-          scanners: vuln,misconfig,secret
+          scanners: vuln,misconfig
           severity: HIGH,CRITICAL
           exit-code: 0
           format: sarif
@@ -79,7 +92,6 @@ jobs:
           name: trivy-results
           path: trivy-results.sarif
           if-no-files-found: warn
-
   backend:
     name: backend
     runs-on: ubuntu-24.04

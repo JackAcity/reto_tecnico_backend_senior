@@ -105,4 +105,5 @@ public sealed class GuardiaArquitecturaTests
         var proyecto = File.ReadAllText(Proyecto("src", "Services", "Control", "Control.Application", "Control.Application.csproj"));
 
         Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
-    }}
+    }
+}

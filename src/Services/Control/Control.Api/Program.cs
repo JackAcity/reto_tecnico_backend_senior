@@ -28,9 +28,6 @@ app.UseServiceDefaults("Control");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// El dueño del esquema migra antes de declarar el servicio disponible.
-await app.Services.MigrarAsync();
-
 // El servicio vuelve a exigir el permiso porque el usuario auditado proviene del token.
 // La autenticación usa bearer tokens, no cookies.
 app.MapPost("/cargas", async (

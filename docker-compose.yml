@@ -88,6 +88,15 @@ services:
       timeout: 3s
       retries: 10
 
+  database-migrator:
+    # Componente de despliegue: aplica el esquema versionado y termina. Ningún
+    # servicio de negocio conoce migraciones ni modelos de los otros servicios.
+    restart: "no"
+    environment:
+      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    build: { context: ., dockerfile: src/DatabaseMigrator/Dockerfile }
+    depends_on:
+      postgres: { condition: service_healthy }
   # ---------- Microservicios ----------
   gateway:
     <<: *servicio-net
@@ -131,9 +140,9 @@ services:
     <<: *servicio-net
     build: { context: ., dockerfile: src/Services/Control/Control.Api/Dockerfile }
     depends_on:
-      postgres:  { condition: service_healthy }
-      rabbitmq:  { condition: service_healthy }
-      seaweedfs: { condition: service_healthy }
+      database-migrator: { condition: service_completed_successfully }
+      rabbitmq:          { condition: service_healthy }
+      seaweedfs:         { condition: service_healthy }
 
   cargamasiva:
     <<: *servicio-net

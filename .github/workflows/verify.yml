@@ -53,7 +53,7 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Scan filesystem, secrets and infrastructure configuration
+      - name: Enforce Trivy security threshold
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
@@ -61,6 +61,15 @@ jobs:
           scanners: vuln,misconfig,secret
           severity: HIGH,CRITICAL
           exit-code: 1
+      - name: Generate Trivy evidence
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          exit-code: 0
           format: sarif
           output: trivy-results.sarif
       - name: Publish Trivy report

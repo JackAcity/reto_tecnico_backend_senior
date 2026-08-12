@@ -1,11 +1,10 @@
 using Auth.Domain;
 using Microsoft.EntityFrameworkCore;
-using Persistencia;
 
 namespace Auth.Api;
 
 /// <summary>Adaptador EF de <see cref="IRepositorioUsuarios"/> (design.md §D2).</summary>
-public sealed class RepositorioUsuariosEf(RetoDbContext db) : IRepositorioUsuarios
+public sealed class RepositorioUsuariosEf(AuthDbContext db) : IRepositorioUsuarios
 {
     public Task<Usuario?> ObtenerPorEmailActivoAsync(string email, CancellationToken ct) =>
         db.Usuarios.SingleOrDefaultAsync(u => u.Email == email && u.Activo, ct);

@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Enforce workflow policy and adversarial fixture
         shell: pwsh
         run: ./scripts/ci/Assert-Gate2AWorkflowPolicy.ps1
@@ -37,6 +38,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Scan source and prove synthetic-secret detection
         shell: pwsh
         run: ./scripts/ci/Assert-Gate2ASecretPolicy.ps1
@@ -50,15 +52,24 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Scan filesystem, secrets and infrastructure configuration
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           scanners: vuln,misconfig,secret
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
           exit-code: 1
+          format: sarif
+          output: trivy-results.sarif
+      - name: Publish Trivy report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          if-no-files-found: warn
 
   backend:
     name: backend
@@ -69,6 +80,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Install .NET SDK
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:
@@ -90,6 +102,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Install Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -114,6 +127,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: Install .NET SDK
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:

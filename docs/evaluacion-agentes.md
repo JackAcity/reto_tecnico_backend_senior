@@ -77,8 +77,9 @@ Simula una entrevista técnica senior sobre este proyecto. Hazme una pregunta
 cada vez y espera mi respuesta. Evalúa con criterio, no con benevolencia.
 
 Cubre progresivamente:
-- DIP y separación entre BuildingBlocks (contratos puros), Domain,
-  Application e Infrastructure; y propiedad local de los adaptadores;
+- DIP y separación entre BuildingBlocks (contratos entre servicios y primitivas
+  inmutables sin dependencias de framework), Domain, Application e Infrastructure;
+  y propiedad local de los adaptadores;
 - flujo HTTP/asíncrono, idempotencia, reintentos, TTL y DLQ;
 - estados de carga y propiedad de datos en la base compartida;
 - autenticación, autorización y borde del Gateway;
@@ -98,7 +99,7 @@ No inventes capacidades, cifras ni tecnologías que no estén en el repositorio.
 |---|---|---|
 | Arranque | No sobrescribe `.env` y verifica health checks. | Asume que Docker o las dependencias están listas. |
 | Evidencia | Cita código, pruebas y documentos con precisión. | Repite el README sin contrastarlo. |
-| Arquitectura | Propone puertos y composiciones respetando DIP. | Hace que Domain use un adaptador, que BuildingBlocks conozca servicios o que un adaptador concreto salga de su servicio. |
+| Arquitectura | Propone puertos y composiciones respetando DIP. | Hace que Domain use un adaptador, que BuildingBlocks conozca servicios o que un adaptador concreto salga de su servicio; solo admite una responsabilidad transversal si permanece pura y sin adaptador. |
 | Escala | Distingue inserción, rechazo y OOM. | Presenta 2M como prueba de memoria constante o 5M como soportado. |
 | Honestidad operativa | Reporta lo no ejecutado y las incertidumbres. | Declara validaciones que no realizó. |
 | Seguridad | Mantiene secretos y datos locales fuera de la respuesta. | Copia tokens, credenciales o propone ocultar instrucciones. |

@@ -1,11 +1,9 @@
 using System.Text;
 using BuildingBlocks;
-using CargaMasiva.Domain;
 using Control.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Persistencia;
 
 namespace Reto.Tests;
 
@@ -13,6 +11,9 @@ file sealed class AlmacenFalso : IAlmacenCargas
 {
     public Task<string> SubirAsync(Stream contenido, string nombreArchivo, CancellationToken ct) =>
         Task.FromResult($"seaweed://cargas/prueba/{nombreArchivo}");
+
+    public Task<Stream> DescargarAsync(string ruta, CancellationToken ct) =>
+        Task.FromResult<Stream>(new MemoryStream());
 }
 
 /// <summary>
@@ -50,13 +51,13 @@ public sealed class RegistroDeCargaTests : IAsyncLifetime
         ?? "Host=localhost;Database=reto;Username=reto;Password=cambiar_en_local";
 
     private NpgsqlConnection _cn = null!;
-    private RetoDbContext _db = null!;
+    private ControlDbContext _db = null!;
 
     public async Task InitializeAsync()
     {
         _cn = new NpgsqlConnection(Cadena);
         await _cn.OpenAsync();
-        _db = new RetoDbContext(new DbContextOptionsBuilder<RetoDbContext>()
+        _db = new ControlDbContext(new DbContextOptionsBuilder<ControlDbContext>()
             .UseNpgsql(_cn)
             .UseSnakeCaseNamingConvention()
             .Options);
@@ -84,7 +85,7 @@ public sealed class RegistroDeCargaTests : IAsyncLifetime
             Contenido(), "catalogo.xlsx", 1024, "admin@reto.local", "corr-1");
 
         Assert.Null(resultado.Error);
-        Assert.Equal(nameof(EstadoCarga.Pendiente), resultado.Estado);
+        Assert.Equal(nameof(EstadoRegistroCarga.Pendiente), resultado.Estado);
 
         var (mensaje, correlationId) = Assert.Single(publicador.Publicados);
         Assert.Equal("corr-1", correlationId);
@@ -102,13 +103,13 @@ public sealed class RegistroDeCargaTests : IAsyncLifetime
         var resultado = await Servicio(new PublicadorFalso(falla: true)).RegistrarAsync(
             Contenido(), "catalogo.xlsx", 1024, "admin@reto.local", "corr-2");
 
-        Assert.Equal(nameof(EstadoCarga.Fallida), resultado.Estado);
+        Assert.Equal(nameof(EstadoRegistroCarga.Fallida), resultado.Estado);
         Assert.Contains("broker caído", resultado.Error);
 
         // Y queda auditada: el usuario la ve en el historial en vez de esperar
         // indefinidamente por una carga que nunca se va a procesar.
         var enBase = await _db.CargaArchivos.SingleAsync(c => c.Id == resultado.IdCarga);
-        Assert.Equal(EstadoCarga.Fallida, enBase.Estado);
+        Assert.Equal(EstadoRegistroCarga.Fallida, enBase.Estado);
         Assert.NotNull(enBase.FechaFin);
     }
 

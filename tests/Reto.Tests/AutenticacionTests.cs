@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
-using Persistencia;
 
 namespace Reto.Tests;
 
@@ -32,14 +31,14 @@ public sealed class AutenticacionTests : IAsyncLifetime
 
     private readonly string _email = $"login-{Guid.NewGuid():N}@reto.local";
     private NpgsqlConnection _cn = null!;
-    private RetoDbContext _db = null!;
+    private AuthDbContext _db = null!;
     private ServicioAutenticacion _svc = null!;
 
     public async Task InitializeAsync()
     {
         _cn = new NpgsqlConnection(Cadena);
         await _cn.OpenAsync();
-        _db = new RetoDbContext(new DbContextOptionsBuilder<RetoDbContext>()
+        _db = new AuthDbContext(new DbContextOptionsBuilder<AuthDbContext>()
             .UseNpgsql(_cn)
             .UseSnakeCaseNamingConvention()
             .Options);

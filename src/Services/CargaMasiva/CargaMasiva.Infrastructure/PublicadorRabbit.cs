@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,7 +9,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 
-namespace Mensajeria;
+namespace CargaMasiva.Infrastructure;
 
 /// <summary>
 /// Publica con confirms y <c>mandatory</c> para que una ruta sin cola falle en vez de perder el mensaje.
@@ -16,7 +18,7 @@ namespace Mensajeria;
 public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<PublicadorRabbit> log)
     : IAsyncDisposable
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = SerializadorMensajesRabbit.CrearOpciones();
 
     private readonly OpcionesRabbit _opciones = opciones.Value;
     private readonly SemaphoreSlim _candado = new(1, 1);
@@ -38,7 +40,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
             };
 
             await canal.BasicPublishAsync(
-                Topologia.Exchange, routingKey, mandatory: true, propiedades,
+                TopologiaRabbit.Exchange, routingKey, mandatory: true, propiedades,
                 JsonSerializer.SerializeToUtf8Bytes(mensaje, Json), ct);
 
         }
@@ -73,7 +75,7 @@ public sealed class PublicadorRabbit(IOptions<OpcionesRabbit> opciones, ILogger<
                 ct);
             _canal.BasicReturnAsync += AlRetornarMensajeAsync;
 
-            await Topologia.DeclararAsync(_canal, _opciones.ReintentoSegundos, ct);
+            await TopologiaRabbit.DeclararAsync(_canal, _opciones.ReintentoSegundos, ct);
             return _canal;
         }
         finally
@@ -106,10 +108,32 @@ public sealed class FalloPublicacionRabbitException(string mensaje, Exception in
 
 public static class MensajeriaExtensiones
 {
-    public static IServiceCollection AddMensajeria(this IServiceCollection servicios, IConfiguration config)
+    public static IServiceCollection AddMensajeriaRabbit(this IServiceCollection servicios, IConfiguration config)
     {
         servicios.Configure<OpcionesRabbit>(config.GetSection("RabbitMq"));
         servicios.AddSingleton<PublicadorRabbit>();
         return servicios;
     }
+}
+
+/// <summary>Configuración del wire format RabbitMQ propiedad de CargaMasiva.</summary>
+public static class SerializadorMensajesRabbit
+{
+    public static JsonSerializerOptions CrearOpciones()
+    {
+        var opciones = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        opciones.Converters.Add(new FechaFinJsonConverter());
+        return opciones;
+    }
+}
+
+internal sealed class FechaFinJsonConverter : JsonConverter<DateTimeOffset>
+{
+    private const string Formato = "yyyy-MM-ddTHH:mm:ss";
+
+    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        DateTimeOffset.Parse(reader.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.UtcDateTime.ToString(Formato, CultureInfo.InvariantCulture));
 }

@@ -48,14 +48,16 @@ public sealed class GuardiaArquitecturaTests
     }
 
     [Fact]
-    public void Mensajeria_NoReferenciaBuildingBlocks_Y_ElNucleoNoTieneFrameworks()
+    public void NucleoNoTieneFrameworksNiPaquetes()
     {
-        var mensajeria = File.ReadAllText(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj"));
         var nucleo = File.ReadAllText(Proyecto("src", "BuildingBlocks", "BuildingBlocks.csproj"));
 
-        Assert.DoesNotContain("BuildingBlocks.csproj", mensajeria, StringComparison.Ordinal);
         Assert.DoesNotContain("FrameworkReference", nucleo, StringComparison.Ordinal);
         Assert.DoesNotContain("PackageReference", nucleo, StringComparison.Ordinal);
+
+        var contratos = File.ReadAllText(Proyecto("src", "BuildingBlocks", "Mensajes.cs"));
+        Assert.DoesNotContain("JsonConverter", contratos, StringComparison.Ordinal);
+        Assert.DoesNotContain("JsonSerializer", contratos, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -81,6 +83,91 @@ public sealed class GuardiaArquitecturaTests
             Assert.DoesNotContain("using Microsoft.AspNetCore.Identity;", contenido, StringComparison.Ordinal);
             Assert.DoesNotContain("using Microsoft.Extensions.Options;", contenido, StringComparison.Ordinal);
             Assert.DoesNotContain("using Microsoft.IdentityModel", contenido, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void SeaweedFs_SeRegistraSoloEnLosServiciosQueLoPoseen()
+    {
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Almacenamiento", solucion, StringComparison.Ordinal);
+
+        var proyectos = Directory.GetFiles(Proyecto("src"), "*.csproj", SearchOption.AllDirectories);
+        foreach (var proyecto in proyectos)
+        {
+            var contenido = File.ReadAllText(proyecto);
+            Assert.DoesNotContain("Shared\\Almacenamiento", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("Shared/Almacenamiento", contenido, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void ControlApplication_NoReferenciaElDominioDeOtroServicio()
+    {
+        var proyecto = File.ReadAllText(Proyecto("src", "Services", "Control", "Control.Application", "Control.Application.csproj"));
+
+        Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NotificacionesApplication_NoReferenciaElDominioDeOtroServicio()
+    {
+        var proyecto = File.ReadAllText(Proyecto("src", "Services", "Notificaciones", "Notificaciones.Application", "Notificaciones.Application.csproj"));
+
+        Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PersistenciaCompartida_NoFormaParteDeLaSolucion()
+    {
+        Assert.False(File.Exists(Proyecto("src", "Shared", "Persistencia", "Persistencia.csproj")));
+
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Persistencia", solucion, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MensajeriaCompartida_NoFormaParteDeLaSolucion()
+    {
+        Assert.False(File.Exists(Proyecto("src", "Shared", "Mensajeria", "Mensajeria.csproj")));
+
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Mensajeria", solucion, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NingunProyectoReferenciaAdaptadoresSharedEliminados()
+    {
+        foreach (var proyecto in Directory.GetFiles(Proyecto("src"), "*.csproj", SearchOption.AllDirectories))
+        {
+            var contenido = File.ReadAllText(proyecto);
+            Assert.DoesNotContain("Shared\\Almacenamiento", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("Shared\\Mensajeria", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain("Shared\\Persistencia", contenido, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("Auth", "CargaMasiva")]
+    [InlineData("Auth", "Control")]
+    [InlineData("Auth", "Notificaciones")]
+    [InlineData("CargaMasiva", "Auth")]
+    [InlineData("CargaMasiva", "Control")]
+    [InlineData("CargaMasiva", "Notificaciones")]
+    [InlineData("Control", "Auth")]
+    [InlineData("Control", "CargaMasiva")]
+    [InlineData("Control", "Notificaciones")]
+    [InlineData("Notificaciones", "Auth")]
+    [InlineData("Notificaciones", "CargaMasiva")]
+    [InlineData("Notificaciones", "Control")]
+    public void ServiciosNoTienenReferenciasDeCompilacionEntreSi(string servicioOrigen, string servicioDestino)
+    {
+        var carpetaOrigen = Proyecto("src", "Services", servicioOrigen);
+        foreach (var proyecto in Directory.GetFiles(carpetaOrigen, "*.csproj", SearchOption.AllDirectories))
+        {
+            var contenido = File.ReadAllText(proyecto);
+            Assert.DoesNotContain($"Services\\{servicioDestino}\\", contenido, StringComparison.Ordinal);
+            Assert.DoesNotContain($"Services/{servicioDestino}/", contenido, StringComparison.Ordinal);
         }
     }
 }

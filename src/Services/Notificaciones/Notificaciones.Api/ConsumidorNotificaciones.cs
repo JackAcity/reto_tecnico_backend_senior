@@ -1,6 +1,5 @@
 using System.Text.Json;
 using BuildingBlocks;
-using Mensajeria;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,7 +27,7 @@ public sealed class ConsumidorNotificaciones(
 {
     public const int MaxIntentos = 3;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = SerializadorMensajesRabbit.CrearOpciones();
 
     private IConnection? _conexion;
     private IChannel? _canal;
@@ -46,13 +45,13 @@ public sealed class ConsumidorNotificaciones(
         }.CreateConnectionAsync(ct);
 
         _canal = await _conexion.CreateChannelAsync(cancellationToken: ct);
-        await Topologia.DeclararAsync(_canal, opts.ReintentoSegundos, ct);
+        await TopologiaRabbit.DeclararAsync(_canal, opts.ReintentoSegundos, ct);
         await _canal.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false, ct);
 
         var consumidor = new AsyncEventingBasicConsumer(_canal);
         consumidor.ReceivedAsync += async (_, ea) => await ProcesarEntregaAsync(ea, ct);
 
-        await _canal.BasicConsumeAsync(Topologia.ColaNotificaciones, autoAck: false, consumidor, ct);
+        await _canal.BasicConsumeAsync(TopologiaRabbit.ColaNotificaciones, autoAck: false, consumidor, ct);
 
         await Task.Delay(Timeout.InfiniteTimeSpan, ct);
     }
@@ -78,7 +77,7 @@ public sealed class ConsumidorNotificaciones(
         }
         catch (Exception ex)
         {
-            var intentos = Topologia.ContarIntentosPrevios(ea.BasicProperties.Headers, Topologia.ColaNotificaciones);
+            var intentos = TopologiaRabbit.ContarIntentosPrevios(ea.BasicProperties.Headers, TopologiaRabbit.ColaNotificaciones);
             log.LogError(ex, "Fallo enviando notificación de carga {IdCarga}, intento {Intento}/{Max}",
                 mensaje?.IdCarga, intentos + 1, MaxIntentos);
 
@@ -87,7 +86,7 @@ public sealed class ConsumidorNotificaciones(
                 log.LogCritical(
                     "Carga {IdCarga}: se agotaron los {Max} intentos de notificación. " +
                     "El usuario no recibirá el correo; el mensaje queda en {ColaMuertos} para revisión manual.",
-                    mensaje?.IdCarga, MaxIntentos, Topologia.ColaNotificacionesMuertos);
+                    mensaje?.IdCarga, MaxIntentos, TopologiaRabbit.ColaNotificacionesMuertos);
 
                 var propiedades = new BasicProperties
                 {
@@ -98,7 +97,7 @@ public sealed class ConsumidorNotificaciones(
                     Headers = ea.BasicProperties.Headers
                 };
                 await canal.BasicPublishAsync(
-                    Topologia.Exchange, Topologia.RkNotificacionMuerto, mandatory: false,
+                    TopologiaRabbit.Exchange, TopologiaRabbit.RkNotificacionMuerto, mandatory: false,
                     propiedades, ea.Body, ctHost);
 
                 await canal.BasicAckAsync(ea.DeliveryTag, multiple: false, ctHost);

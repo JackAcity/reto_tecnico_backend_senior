@@ -1,0 +1,42 @@
+name: Dependency audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    name: dependency-audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: 10.0.110
+      - name: Restore NuGet dependencies
+        run: dotnet restore Reto.slnx --disable-build-servers
+      - name: Audit NuGet dependencies
+        shell: pwsh
+        run: ./scripts/ci/Assert-NoNuGetVulnerabilities.ps1
+      - name: Install Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24.13.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Restore npm dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit npm dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high

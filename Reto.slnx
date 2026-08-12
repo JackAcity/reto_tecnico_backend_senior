@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.csproj" />
     <Project Path="src/ServiceHost/ServiceHost.csproj" />
+    <Project Path="src/DatabaseMigrator/DatabaseMigrator.csproj" />
     <Project Path="src/Gateway/Gateway.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />
@@ -23,11 +24,6 @@
   <Folder Name="/src/Services/Notificaciones/">
     <Project Path="src/Services/Notificaciones/Notificaciones.Api/Notificaciones.Api.csproj" />
     <Project Path="src/Services/Notificaciones/Notificaciones.Application/Notificaciones.Application.csproj" />
-  </Folder>
-  <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/Almacenamiento/Almacenamiento.csproj" />
-    <Project Path="src/Shared/Mensajeria/Mensajeria.csproj" />
-    <Project Path="src/Shared/Persistencia/Persistencia.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Reto.Tests/Reto.Tests.csproj" />

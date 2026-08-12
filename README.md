@@ -59,11 +59,11 @@ flowchart LR
 |---|---|
 | `Gateway` | Único borde HTTP público; enruta y aplica políticas de borde. |
 | `Auth` | Emite credenciales y tokens. |
-| `Control` | Recibe la carga, registra su intención y publica el comando. Es dueño de las migraciones. |
+| `Control` | Recibe la carga, registra su intención y publica el comando. |
 | `CargaMasiva` | Consume el comando, descarga el Excel, aplica reglas e inserta los resultados. |
 | `Notificaciones` | Consume el evento de desenlace y envía el correo. |
-| `BuildingBlocks` | Contratos y utilidades técnicas compartidas; no conoce Domain, Infrastructure ni hosts. |
-| `Shared` | Elementos transversales compartidos, aislados de los Building Blocks de los servicios. |
+| `DatabaseMigrator` | Aplica el esquema una vez antes de iniciar servicios de negocio. |
+| `BuildingBlocks` | Contratos puros y utilidades sin dependencias técnicas; no conoce Domain, Infrastructure ni hosts. |
 
 Cada servicio aplica una separación hexagonal/Clean Architecture:
 
@@ -131,7 +131,7 @@ docker compose ps
 | PostgreSQL | `localhost:5432` | Acceso local de desarrollo. |
 | SeaweedFS | http://localhost:9333 | Servicio de almacenamiento local. |
 
-En el primer arranque, Control prepara el esquema y Auth crea las cuentas de demostración definidas en el archivo `.env` local. Son credenciales de desarrollo: cámbielas antes de cualquier uso fuera de esta máquina.
+En el primer arranque, DatabaseMigrator prepara el esquema y Auth crea las cuentas de demostración definidas en el archivo `.env` local. Son credenciales de desarrollo: cámbielas antes de cualquier uso fuera de esta máquina.
 
 ### Comprobar salud desde CMD
 
@@ -260,7 +260,7 @@ src/
   Gateway/            borde HTTP
   ServiceHost/        composición y arranque de servicios
   Services/           Auth, Control, CargaMasiva y Notificaciones
-  Shared/             elementos transversales aislados
+  DatabaseMigrator/    aplicación de esquema fuera de los servicios de negocio
 tests/Reto.Tests/     pruebas de integración, arquitectura y comportamiento
 postman/              colección y entorno local
 samples/              fixtures de aceptación y de escala regenerables

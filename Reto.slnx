@@ -27,7 +27,6 @@
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Mensajeria/Mensajeria.csproj" />
-    <Project Path="src/Shared/Persistencia/Persistencia.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Reto.Tests/Reto.Tests.csproj" />

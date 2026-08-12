@@ -114,4 +114,12 @@ public sealed class GuardiaArquitecturaTests
 
         Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
     }
-}
+
+    [Fact]
+    public void PersistenciaCompartida_NoFormaParteDeLaSolucion()
+    {
+        Assert.False(File.Exists(Proyecto("src", "Shared", "Persistencia", "Persistencia.csproj")));
+
+        var solucion = File.ReadAllText(Proyecto("Reto.slnx"));
+        Assert.DoesNotContain("Shared/Persistencia", solucion, StringComparison.Ordinal);
+    }}

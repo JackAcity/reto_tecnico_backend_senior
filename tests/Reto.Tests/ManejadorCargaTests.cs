@@ -63,7 +63,7 @@ file sealed class PublicadorFalso : IPublicadorNotificacion
 }
 
 /// <summary>
-/// Cierra la Requirement "ManejadorCarga usa un puerto, no RetoDbContext"
+/// Cierra la Requirement "ManejadorCarga usa un puerto, no un DbContext concreto"
 /// (puertos-acceso-datos) — reproduce los casos de <c>ProcesadorLoteTests</c> /
 /// <c>RegistroDeCargaTests</c> sin levantar Postgres.
 /// </summary>

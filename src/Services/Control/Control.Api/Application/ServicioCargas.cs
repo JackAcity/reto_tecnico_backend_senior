@@ -1,5 +1,4 @@
 using BuildingBlocks;
-using CargaMasiva.Domain;
 using Microsoft.Extensions.Logging;
 
 namespace Control.Api;
@@ -10,7 +9,7 @@ namespace Control.Api;
 /// </summary>
 public interface IRepositorioCargas
 {
-    void Agregar(CargaArchivo carga);
+    void Agregar(RegistroCarga carga);
     Task GuardarCambiosAsync(CancellationToken ct);
 }
 
@@ -83,14 +82,14 @@ public sealed class ServicioCargas(
         // Persistir el archivo primero evita una carga que apunte a una ruta inexistente.
         var ruta = await almacen.SubirAsync(contenido, nombreArchivo, ct);
 
-        var carga = new CargaArchivo
+        var carga = new RegistroCarga
         {
             NombreArchivo = nombreArchivo,
             RutaArchivo = ruta,
             TamanoBytes = tamanoBytes,
             Usuario = usuario,
             FechaRegistro = DateTimeOffset.UtcNow,
-            Estado = EstadoCarga.Pendiente,
+            Estado = EstadoRegistroCarga.Pendiente,
             CorrelationId = correlationId
         };
         repositorio.Agregar(carga);
@@ -105,8 +104,7 @@ public sealed class ServicioCargas(
         {
             log.LogError("No se pudo publicar la carga {IdCarga}; queda como Fallida: {Error}", carga.Id, resultado.Error);
 
-            carga.Transicionar(EstadoCarga.Fallida);
-            carga.MensajeError = $"No se pudo encolar el procesamiento: {resultado.Error}";
+            carga.MarcarFallida($"No se pudo encolar el procesamiento: {resultado.Error}");
             await repositorio.GuardarCambiosAsync(ct);
 
             return new ResultadoRegistro(carga.Id, carga.Estado.ToString(), carga.MensajeError);

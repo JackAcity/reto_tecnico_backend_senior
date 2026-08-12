@@ -3,11 +3,10 @@ using Control.Api;
 using Mensajeria;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
-using Persistencia;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Control");
-builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddPersistenciaControl(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.AddAlmacenCargasSeaweedFs(builder.Configuration);
 builder.Services.AddMensajeria(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);

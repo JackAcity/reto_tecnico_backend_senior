@@ -1,4 +1,4 @@
-name: Dependency review
+name: Dependency audit
 
 on:
   pull_request:
@@ -9,15 +9,16 @@ on:
       - "frontend/package.json"
       - "frontend/package-lock.json"
       - ".github/dependabot.yml"
-      - "global.json"
       - "nuget.config"
+      - "docker-compose*.yml"
+      - ".github/workflows/dependency-review.yml"
 
 permissions:
   contents: read
 
 jobs:
-  dependency-review:
-    name: dependency-review
+  dependency-audit:
+    name: dependency-audit
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -25,8 +26,24 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 1
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@595b5aeba73380359d98a5e087f648dbb0edce1b # v4.7.3
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:
-          fail-on-severity: high
-          comment-summary-in-pr: never
+          dotnet-version: 10.0.110
+      - name: Restore NuGet dependencies
+        run: dotnet restore Reto.slnx --disable-build-servers
+      - name: Audit NuGet dependencies
+        shell: pwsh
+        run: ./scripts/ci/Assert-NoNuGetVulnerabilities.ps1
+      - name: Install Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24.13.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Restore npm dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit npm dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high

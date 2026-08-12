@@ -132,9 +132,8 @@ services:
       Seed__ConsultaRol: ${SEED_CONSULTA_ROL}
     build: { context: ., dockerfile: src/Services/Auth/Auth.Api/Dockerfile }
     depends_on:
-      # Espera a Control, no a Postgres: Control es dueño del esquema y lo migra
-      # (design.md §C11). Sembrar antes de la migración fallaría.
-      control: { condition: service_healthy }
+      # Auth necesita el esquema disponible, no que otro servicio de negocio esté iniciado.
+      database-migrator: { condition: service_completed_successfully }
 
   control:
     <<: *servicio-net
@@ -148,10 +147,9 @@ services:
     <<: *servicio-net
     build: { context: ., dockerfile: src/Services/CargaMasiva/CargaMasiva.Api/Dockerfile }
     depends_on:
-      # Control es dueño del esquema y aplica las migraciones (design.md §C11).
-      control:   { condition: service_healthy }
-      rabbitmq:  { condition: service_healthy }
-      seaweedfs: { condition: service_healthy }
+      database-migrator: { condition: service_completed_successfully }
+      rabbitmq:          { condition: service_healthy }
+      seaweedfs:         { condition: service_healthy }
 
   notificaciones:
     <<: *servicio-net
@@ -165,9 +163,9 @@ services:
       Smtp__UsarSsl: ${SMTP_USAR_SSL}
     build: { context: ., dockerfile: src/Services/Notificaciones/Notificaciones.Api/Dockerfile }
     depends_on:
-      control:  { condition: service_healthy }
-      rabbitmq: { condition: service_healthy }
-      mailpit:  { condition: service_healthy }
+      database-migrator: { condition: service_completed_successfully }
+      rabbitmq:          { condition: service_healthy }
+      mailpit:           { condition: service_healthy }
 
 volumes:
   pgdata:

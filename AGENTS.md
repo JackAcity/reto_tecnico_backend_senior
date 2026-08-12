@@ -79,9 +79,11 @@ ejecutar, indique el motivo y no lo convierta en un resultado implícito.
 - `CargaMasiva` consume, procesa el Excel, persiste resultados y publica el
   evento de notificación.
 - `Notificaciones` envía el correo y cierra `Finalizado → Notificado`.
-- `BuildingBlocks` contiene contratos y utilidades técnicas simples.
-- `Shared` contiene adaptadores reutilizables; no debe referenciar
-  `BuildingBlocks`.
+- `BuildingBlocks` contiene contratos entre servicios y primitivas inmutables,
+  sin dependencias de framework, dominio, infraestructura ni hosts.
+- No existe una capa `Shared`: los adaptadores concretos pertenecen al servicio
+  que los consume. Reubíquelos solo si aparece una responsabilidad transversal
+  real y se puede conservar la dirección de dependencias.
 - `ServiceHost` compone dependencias. No contiene reglas de negocio.
 
 La guía visual en [docs/explicacion/README.md](docs/explicacion/README.md)
@@ -98,8 +100,10 @@ Domain  ←  Application  ←  Infrastructure / API
 - Domain no referencia Infrastructure, EF Core, RabbitMQ, SeaweedFS ni HTTP.
 - Application depende de contratos; los adaptadores concretos se registran en
   los hosts.
-- Shared no referencia BuildingBlocks.
 - BuildingBlocks no incorpora frameworks ni referencias a hosts o servicios.
+- Una responsabilidad puede vivir en BuildingBlocks solo si es transversal,
+  reutilizable y pura; un adaptador concreto sigue siendo propiedad del servicio
+  que lo consume.
 - No introduzca una interfaz sin una variación técnica o una frontera real que
   la justifique.
 

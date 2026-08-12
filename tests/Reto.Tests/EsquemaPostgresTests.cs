@@ -8,8 +8,8 @@ namespace Reto.Tests;
 /// Prueba de integración del Bloque 2: valida los dos procedimientos almacenados
 /// (§4.15) y la clave de negocio contra un PostgreSQL real.
 ///
-/// Requiere la base levantada: <c>docker compose up -d postgres</c> + migraciones
-/// aplicadas (las aplica Control al arrancar). Todo corre dentro de una transacción
+/// Requiere la base levantada: <c>docker compose up -d database-migrator</c>.
+/// El componente de despliegue aplica el esquema antes de iniciar los servicios. Todo corre dentro de una transacción
 /// que se revierte al final, así que es repetible sin dejar rastro.
 /// </summary>
 public sealed class EsquemaPostgresTests : IAsyncLifetime
@@ -45,7 +45,7 @@ public sealed class EsquemaPostgresTests : IAsyncLifetime
     }
 
     // El estado se persiste como el NOMBRE del enum (HasConversion<string>(),
-    // RetoDbContext.cs): pasar el enum y convertir acá adentro es la única forma
+    // mapeo EF de CargaMasiva): pasar el enum y convertir acá adentro es la única forma
     // de que un rename del enum rompa la compilación en vez de romper en silencio
     // un literal "EnProceso" suelto en el test.
     private async Task<int> NuevaCargaAsync(EstadoCarga estado)

@@ -1,6 +1,7 @@
+using BuildingBlocks;
 using RabbitMQ.Client;
 
-namespace Mensajeria;
+namespace Control.Api;
 
 public sealed class OpcionesRabbit
 {
@@ -30,22 +31,22 @@ public sealed class ConfiguracionMensajeriaException(string mensaje) : Exception
 /// Se declara desde los tres servicios: es idempotente, y así ninguno depende
 /// de que otro haya arrancado antes.
 /// </summary>
-public static class Topologia
+public static class TopologiaRabbit
 {
-    public const string Exchange = "cargas";
-    public const string ExchangeReintento = "cargas.reintento";
+    public const string Exchange = TopologiaMensajeria.Exchange;
+    public const string ExchangeReintento = TopologiaMensajeria.ExchangeReintento;
 
-    public const string RkCarga = "carga.masiva";
-    public const string RkNotificacion = "carga.notificacion";
-    public const string RkCargaMuerto = "carga.masiva.muerto";
-    public const string RkNotificacionMuerto = "carga.notificacion.muerto";
+    public const string RkCarga = TopologiaMensajeria.RkCarga;
+    public const string RkNotificacion = TopologiaMensajeria.RkNotificacion;
+    public const string RkCargaMuerto = TopologiaMensajeria.RkCargaMuerto;
+    public const string RkNotificacionMuerto = TopologiaMensajeria.RkNotificacionMuerto;
 
-    public const string ColaCarga = "carga_masiva";
-    public const string ColaNotificaciones = "notificaciones";
-    public const string ColaCargaReintento = "carga_masiva.reintento";
-    public const string ColaCargaMuertos = "carga_masiva.muertos";
-    public const string ColaNotificacionesReintento = "notificaciones.reintento";
-    public const string ColaNotificacionesMuertos = "notificaciones.muertos";
+    public const string ColaCarga = TopologiaMensajeria.ColaCarga;
+    public const string ColaNotificaciones = TopologiaMensajeria.ColaNotificaciones;
+    public const string ColaCargaReintento = TopologiaMensajeria.ColaCargaReintento;
+    public const string ColaCargaMuertos = TopologiaMensajeria.ColaCargaMuertos;
+    public const string ColaNotificacionesReintento = TopologiaMensajeria.ColaNotificacionesReintento;
+    public const string ColaNotificacionesMuertos = TopologiaMensajeria.ColaNotificacionesMuertos;
 
     public static async Task DeclararAsync(IChannel canal, int reintentoSegundos, CancellationToken ct = default)
     {

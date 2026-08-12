@@ -1,7 +1,7 @@
 using System.Text.Json;
 using BuildingBlocks;
 using CargaMasiva.Application;
-using Mensajeria;
+using CargaMasiva.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -40,13 +40,13 @@ public sealed class ConsumidorCargaMasiva(
         }.CreateConnectionAsync(ct);
 
         _canal = await _conexion.CreateChannelAsync(cancellationToken: ct);
-        await Topologia.DeclararAsync(_canal, opts.ReintentoSegundos, ct);
+        await TopologiaRabbit.DeclararAsync(_canal, opts.ReintentoSegundos, ct);
         await _canal.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false, ct);
 
         var consumidor = new AsyncEventingBasicConsumer(_canal);
         consumidor.ReceivedAsync += async (_, ea) => await ProcesarEntregaAsync(ea, ct);
 
-        await _canal.BasicConsumeAsync(Topologia.ColaCarga, autoAck: false, consumidor, ct);
+        await _canal.BasicConsumeAsync(TopologiaRabbit.ColaCarga, autoAck: false, consumidor, ct);
 
         // El consumidor entrega por evento; el servicio debe permanecer activo.
         await Task.Delay(Timeout.InfiniteTimeSpan, ct);
@@ -73,7 +73,7 @@ public sealed class ConsumidorCargaMasiva(
         }
         catch (Exception ex)
         {
-            var intentos = Topologia.ContarIntentosPrevios(ea.BasicProperties.Headers, Topologia.ColaCarga);
+            var intentos = TopologiaRabbit.ContarIntentosPrevios(ea.BasicProperties.Headers, TopologiaRabbit.ColaCarga);
             log.LogError(ex, "Fallo procesando carga {IdCarga}, intento {Intento}/{Max}",
                 mensaje?.IdCarga, intentos + 1, MaxIntentos);
 
@@ -90,7 +90,7 @@ public sealed class ConsumidorCargaMasiva(
                     Headers = ea.BasicProperties.Headers
                 };
                 await canal.BasicPublishAsync(
-                    Topologia.Exchange, Topologia.RkCargaMuerto, mandatory: false,
+                    TopologiaRabbit.Exchange, TopologiaRabbit.RkCargaMuerto, mandatory: false,
                     propiedades, ea.Body, ctHost);
 
                 if (mensaje is not null)
@@ -108,7 +108,7 @@ public sealed class ConsumidorCargaMasiva(
     private async Task MarcarFallidaAsync(int idCarga, string error, CancellationToken ct)
     {
         await using var alcance = scopeFactory.CreateAsyncScope();
-        var db = alcance.ServiceProvider.GetRequiredService<Persistencia.RetoDbContext>();
+        var db = alcance.ServiceProvider.GetRequiredService<CargaMasivaDbContext>();
         var carga = await db.CargaArchivos.FindAsync([idCarga], ct);
 
         // Una reentrega puede llegar después de que otro intento alcance un estado terminal.

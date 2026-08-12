@@ -1,5 +1,5 @@
 using System.Net;
-using Almacenamiento;
+using Control.Api;
 
 namespace Reto.Tests;
 
@@ -9,7 +9,7 @@ namespace Reto.Tests;
 /// se arma para el filer de SeaweedFS o la truncan en un punto inesperado.
 /// Unitario: intercepta el HttpClient, no necesita SeaweedFS real.
 /// </summary>
-public class AlmacenSeaweedFsTests
+public class AlmacenCargasSeaweedFsTests
 {
     /// <summary>Envoltorio que lanza en Seek — reproduce HttpBaseStream, el stream real de red que expuso el bug.</summary>
     private sealed class StreamNoSeekable(Stream interno) : Stream
@@ -46,11 +46,11 @@ public class AlmacenSeaweedFsTests
         }
     }
 
-    private static (AlmacenSeaweedFs Almacen, HandlerEspia Espia) Crear()
+    private static (AlmacenCargasSeaweedFs Almacen, HandlerEspia Espia) Crear()
     {
         var espia = new HandlerEspia();
         var http = new HttpClient(espia) { BaseAddress = new Uri("http://seaweedfs:8888/") };
-        return (new AlmacenSeaweedFs(http), espia);
+        return (new AlmacenCargasSeaweedFs(http), espia);
     }
 
     [Theory]

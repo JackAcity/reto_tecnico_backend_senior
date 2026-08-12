@@ -1,20 +1,16 @@
-using Almacenamiento;
 using ServiceHost;
 using Control.Api;
-using Mensajeria;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
-using Persistencia;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Control");
-builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
-builder.Services.AddAlmacenamiento(builder.Configuration);
-builder.Services.AddMensajeria(builder.Configuration);
+builder.Services.AddPersistenciaControl(builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddAlmacenCargasSeaweedFs(builder.Configuration);
+builder.Services.AddMensajeriaRabbit(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration);
 builder.Services.AddScoped<IRepositorioCargas, RepositorioCargasEf>();
 builder.Services.AddScoped<IConsultaCargas, ConsultaCargasEf>();
-builder.Services.AddScoped<IAlmacenCargas, AlmacenCargasSeaweedFs>();
 builder.Services.AddScoped<IPublicadorCargas, PublicadorCargasRabbit>();
 builder.Services.AddScoped<ServicioCargas>();
 builder.Services.AddScoped<ConsultaCargas>();
@@ -29,9 +25,6 @@ var app = builder.Build();
 app.UseServiceDefaults("Control");
 app.UseAuthentication();
 app.UseAuthorization();
-
-// El dueño del esquema migra antes de declarar el servicio disponible.
-await app.Services.MigrarAsync();
 
 // El servicio vuelve a exigir el permiso porque el usuario auditado proviene del token.
 // La autenticación usa bearer tokens, no cookies.
@@ -76,7 +69,7 @@ app.MapGet("/cargas/{id:int}", async (int id, ConsultaCargas consulta, Cancellat
     .RequireAuthorization(Autenticacion.PoliticaAutenticado);
 
 // El endpoint no expone la ruta interna del almacenamiento.
-app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenArchivos almacen, CancellationToken ct) =>
+app.MapGet("/cargas/{id:int}/contenido", async (int id, ConsultaCargas consulta, IAlmacenCargas almacen, CancellationToken ct) =>
 {
     var archivo = await consulta.ArchivoAsync(id, ct);
     if (archivo is null)

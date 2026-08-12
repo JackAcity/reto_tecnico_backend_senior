@@ -2,11 +2,10 @@ using ServiceHost;
 using Mensajeria;
 using Microsoft.Extensions.Options;
 using Notificaciones.Api;
-using Persistencia;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults("Notificaciones");
-builder.Services.AddPersistencia(builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddPersistenciaNotificaciones(builder.Configuration.GetConnectionString("Postgres"));
 builder.Services.AddMensajeria(builder.Configuration);
 builder.Services.AddEnviadorCorreo(builder.Configuration);
 builder.Services.AddScoped<IRepositorioNotificaciones, RepositorioNotificacionesEf>();

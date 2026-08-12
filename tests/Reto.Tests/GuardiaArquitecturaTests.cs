@@ -106,4 +106,12 @@ public sealed class GuardiaArquitecturaTests
 
         Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void NotificacionesApplication_NoReferenciaElDominioDeOtroServicio()
+    {
+        var proyecto = File.ReadAllText(Proyecto("src", "Services", "Notificaciones", "Notificaciones.Application", "Notificaciones.Application.csproj"));
+
+        Assert.DoesNotContain("CargaMasiva.Domain.csproj", proyecto, StringComparison.Ordinal);
+    }
 }

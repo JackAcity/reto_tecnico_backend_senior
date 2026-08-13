@@ -1,83 +1,60 @@
 # Gate 2A: confianza del repositorio
 
-- Estado: **candidato implementado; activación administrativa pendiente**
-- Fecha: 2026-08-12
-- Baseline inmutable: \`e51d82b3f6f453004896eb22ec898a6ffd211506\`
-- Adaptador objetivo: repositorio público \`JackAcity/reto_tecnico_backend_senior\`
-- Autoridad de activación: dueño humano del repositorio y revisor humano independiente
+- Estado: **activo y verificado en `main`**
+- Activación verificada: 2026-08-12
+- Baseline inicial: `e51d82b3f6f453004896eb22ec898a6ffd211506`
+- Adaptador: repositorio público `JackAcity/reto_tecnico_backend_senior`
+- Autoridad operativa: dueño humano del repositorio y revisor humano independiente
 
 ## Propósito y límite
 
-Gate 2A crea el primer vertical verificable de confianza del repositorio. Su alcance
-es deliberadamente pequeño: CTL-001, CTL-003, CTL-005, CTL-006, CTL-007 para el
-token de GitHub y CTL-012. No incorpora cloud, OIDC, despliegues, environments,
-SLO, rollback, provenance, SBOM ni workflows reutilizables.
+Gate 2A establece el vertical de confianza del repositorio: PR protegido, permisos
+mínimos, workflows verificables y evidencia repetible. No afirma cobertura de cloud,
+OIDC, despliegues, SLO, rollback, provenance ni SBOM; esos controles requieren sus
+propios verticales y decisiones humanas.
 
-La conversación del 2026-08-12 autoriza preparar este candidato tras Gate 1.1. No
-autoriza a un agente a cambiar el default branch, administrar rulesets, configurar
-secretos, aprobar riesgo, autoaprobar, fusionar ni desplegar. Esas operaciones
-permanecen separadas por diseño.
+## Controles activos
 
-## Decisiones aplicadas al candidato
+`main` exige siete checks actualizados antes de fusionar una PR:
 
-| Tema | Decisión candidata | Efecto verificable |
-| --- | --- | --- |
-| Mainline | ADR-0002 opción A: \`main\` será la mainline confiable. | El workflow escucha PR y push a \`main\`; el dueño debe hacer efectiva la topología. |
-| Token de Actions | Solo \`contents: read\`. | El auditor rechaza permisos de escritura y \`write-all\`. |
-| Eventos | Sin \`pull_request_target\` ni \`workflow_run\`. | El fixture adversarial debe ser rechazado. |
-| Acciones | Referencias externas fijadas a SHA completo. | El fixture con \`actions/checkout@v4\` debe ser rechazado. |
-| Secretos | Detector local complementario, sin imprimir coincidencias. | Un token sintético efímero debe ser detectado. |
-| Integración | Compose se levanta desde el mismo checkout del runner. | La suite no confunde contenedores locales de otro commit con el código evaluado. |
+1. `workflow-policy`: rechaza triggers privilegiados, permisos de escritura y
+   acciones sin pin inmutable; incluye fixture adversarial.
+2. `secret-policy`: comprueba detección sintética sin imprimir coincidencias.
+3. `trivy`: bloquea vulnerabilidades o misconfiguraciones HIGH/CRITICAL, analiza
+   secretos sin publicar sus coincidencias y conserva SARIF de vulnerabilidades e
+   infraestructura como evidencia.
+4. `backend`: restore y build Release reproducible de la solución.
+5. `frontend`: instalación por lockfile, lint, test y build.
+6. `integration`: levanta Compose desde el mismo SHA, ejecuta la suite y elimina el
+   stack efímero.
+7. `dependency-audit`: audita NuGet y npm en toda PR; pertenece a Gate 2B, pero es
+   requisito de la protección de rama.
 
-## Implementación entregada
+Los workflows usan `contents: read`, acciones fijadas a SHA y checkout sin
+credenciales persistentes. La configuración y sus scripts están en
+[`.github/workflows`](../../.github/workflows) y [`scripts/ci`](../../scripts/ci).
 
-El workflow [verify.yml](../../.github/workflows/verify.yml) ejecuta cinco checks
-con nombres estables:
+## Protección de `main` verificada
 
-1. \`workflow-policy\`: política de eventos, permisos y pinning, con fixture negativo.
-2. \`secret-policy\`: detector sintético y fixture negativo sin secreto real.
-3. \`backend\`: restore y build Release de la solución.
-4. \`frontend\`: instalación reproducible por lockfile, lint, test y build.
-5. \`integration\`: configuración de desarrollo no secreta, Compose del checkout,
-   pruebas contra ese stack y limpieza del runner efímero.
+- `main` es la rama por defecto.
+- Las reglas se aplican a administradores, prohíben force push y borrado.
+- Se exige una aprobación humana, distinta del último autor de push, y resolución de
+  conversaciones.
+- GitHub Actions usa permisos por defecto de solo lectura y no puede aprobar PRs.
+- Dependabot alerts y Dependabot security updates están habilitados. Secret Scanning
+  y Push Protection deben reevaluarse si cambian visibilidad o plan de GitHub.
 
-Los scripts están en [scripts/ci](../../scripts/ci). El detector local no sustituye
-GitHub Secret Scanning ni Push Protection: ofrece evidencia repetible dentro del
-repositorio, mientras el dueño confirma las capacidades de GitHub disponibles.
+## Evidencia y excepciones
 
-## Activación humana obligatoria
+Conservar por cambio URL de PR, SHA, URL/ID de run, conclusión de checks y
+artefactos de seguridad cuando existan. Una excepción requiere motivo, alcance,
+compensación, dueño y vencimiento. Un secreto real no se exceptúa; su respuesta está
+especificada en el [runbook de exposición](../operations/secret-exposure-runbook.md).
 
-Tras la revisión independiente del PR, el dueño debe seguir el
-[runbook de GitHub](../operations/github-gate2a-owner-runbook.md). Gate 2A no está
-activo hasta que exista evidencia de:
+## Límites honestos
 
-- \`main\` como default y una regla que impida push directo, force push y borrado;
-- PR obligatorio con una aprobación humana distinta del autor;
-- los cinco checks requeridos y resolución de conversaciones;
-- Actions con permiso por defecto de solo lectura y sin permitir que Actions cree o
-  apruebe PRs;
-- Secret Scanning confirmado y Push Protection habilitado cuando la capacidad esté
-  disponible para esta visibilidad y plan.
-
-Un único dueño sin revisor independiente no satisface la separación de funciones:
-debe incorporar un revisor humano antes de exigir aprobación obligatoria.
-
-## Evidencia mínima y excepciones
-
-Conservar por cada cambio: URL de PR, SHA, URL e identificador del run, conclusión
-de cada check, snapshot o export de la regla de rama, estado de permisos de Actions,
-resultado del detector de secretos y, cuando exista, identificador de alerta.
-
-No existen excepciones automáticas. Una excepción requiere dueño humano, motivo,
-compensación, alcance y vencimiento; un secreto real nunca se exceptúa. La respuesta
-a una alerta está en el [runbook de exposición](../operations/secret-exposure-runbook.md).
-
-## Resultado local observado antes de activar
-
-El 2026-08-12, build Release de la solución pasó. La suite integrada contra los
-contenedores locales existentes obtuvo 122/126 pruebas correctas y 4 fallos de carga
-con HTTP 400. Esos tests se conectan a \`localhost:8080\`, mientras los contenedores
-existentes no fueron construidos desde este checkout aislado. El archivo de muestra
-de este checkout sí tenía firma ZIP válida. No se declara una suite verde por ese
-resultado; el job \`integration\` elimina precisamente esa desalineación al construir
-Compose desde el SHA que valida.
+Un pipeline verde no sustituye revisión humana, pruebas de capacidad ni garantías de
+producción. La primera ejecución local anterior al job aislado tuvo fallos por usar
+contenedores de otro checkout; esa evidencia no se presenta como una suite verde. El
+job `integration` actual elimina esa desalineación construyendo y retirando su propio
+stack.

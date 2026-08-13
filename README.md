@@ -23,6 +23,7 @@ La manera más rápida de evaluarlo es:
 | Arranque reproducible | [Puesta en marcha](#puesta-en-marcha) y `docker-compose.yml` |
 | Decisiones discutibles del enunciado | [Diseño OpenSpec](openspec/changes/carga-masiva-microservicios/design.md) |
 | Rendimiento medido y techo conocido | [Pruebas de escala](docs/pruebas-de-escala.md) |
+| Entrega, seguridad y reglas de merge | [CI activo](docs/github/ci-standard.md), [Gate 2A](docs/decisions/GATE-2A-repository-trust.md) y [Gate 2B](docs/decisions/GATE-2B-dependency-governance.md) |
 
 ## Qué resuelve
 
@@ -243,6 +244,19 @@ Una consecuencia operativa importante: para hacer polling use `GET /cargas`. El 
 
 El [documento de diseño](openspec/changes/carga-masiva-microservicios/design.md) conserva el razonamiento completo: contradicciones del enunciado, alternativas consideradas, decisión elegida y evidencia. Para la evolución transversal consulte también el [diseño hexagonal](openspec/changes/arquitectura-hexagonal-transversal/design.md).
 
+## Entrega continua y seguridad
+
+Las PR hacia `main` se protegen con siete checks: política del workflow, detección de
+secretos, Trivy, build backend, validación frontend, integración Docker y auditoría
+de dependencias. Además requieren una aprobación humana posterior al último push y
+conversaciones resueltas. Trivy bloquea HIGH/CRITICAL y publica SARIF únicamente de
+vulnerabilidades y configuración, nunca coincidencias de secretos.
+
+El detalle verificable, los límites y los comandos de inspección están en el
+[estándar CI](docs/github/ci-standard.md) y el
+[runbook de mantenimiento](docs/operations/github-gate2a-owner-runbook.md). La
+migración de PostgreSQL 18 permanece fuera de las actualizaciones automáticas hasta
+contar con `pg_upgrade`, backup, restauración y rollback probados.
 ## Seguridad y operación
 
 - El Gateway es el único servicio de aplicación expuesto como puerto HTTP público.

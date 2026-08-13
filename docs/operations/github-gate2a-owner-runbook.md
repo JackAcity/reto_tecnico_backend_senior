@@ -23,7 +23,12 @@ gh api repos/JackAcity/reto_tecnico_backend_senior --jq '{default_branch, visibi
 gh api repos/JackAcity/reto_tecnico_backend_senior/branches/main/protection
 gh api repos/JackAcity/reto_tecnico_backend_senior/actions/permissions/workflow
 gh api repos/JackAcity/reto_tecnico_backend_senior/automated-security-fixes
+gh api --include repos/JackAcity/reto_tecnico_backend_senior/vulnerability-alerts
 ```
+
+La última consulta devuelve `204 No Content` cuando Dependabot Alerts está
+habilitado y `404 Not Found` cuando no lo está. La comprobación se validó con
+respuesta `204` el 13 de agosto de 2026.
 
 Revise también la página de protección/ruleset de la interfaz de GitHub: los nombres
 de checks pueden cambiar si se renombra un workflow. Cree una PR de prueba cuando
